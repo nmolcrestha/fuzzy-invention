@@ -12,6 +12,7 @@ const schema = z.object({
   BETTER_AUTH_SECRET: z.string().min(32, "BETTER_AUTH_SECRET must be at least 32 characters"),
   BETTER_AUTH_URL: z.url(),
   NEXT_PUBLIC_APP_URL: z.url(),
+  NEXT_PUBLIC_ROOT_DOMAIN: z.string().min(1).default("localhost:3000"),
   RESEND_API_KEY: optional,
   EMAIL_FROM: z.string().default("Side Quest <onboarding@resend.dev>"),
   GOOGLE_CLIENT_ID: optional,

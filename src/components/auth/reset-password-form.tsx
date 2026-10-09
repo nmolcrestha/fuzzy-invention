@@ -1,11 +1,11 @@
 "use client";
 
 import { Loader2Icon } from "lucide-react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ButtonLink } from "@/components/button-link";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -27,9 +27,9 @@ export function ResetPasswordForm() {
         <p className="text-sm text-muted-foreground">
           {authErrorMessage({ code: linkError ?? "INVALID_TOKEN" })}
         </p>
-        <Button nativeButton={false} render={<Link href="/forgot-password" />} className="w-full">
+        <ButtonLink href="/forgot-password" className="w-full">
           Request a new link
-        </Button>
+        </ButtonLink>
       </div>
     );
   }

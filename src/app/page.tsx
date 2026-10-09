@@ -1,7 +1,6 @@
 import { LayersIcon } from "lucide-react";
-import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/button-link";
 
 // Placeholder marketing page. The real landing page comes later.
 export default function HomePage() {
@@ -14,9 +13,9 @@ export default function HomePage() {
           </span>
           Side Quest
         </span>
-        <Button variant="ghost" nativeButton={false} render={<Link href="/login" />}>
+        <ButtonLink variant="ghost" href="/login">
           Log in
-        </Button>
+        </ButtonLink>
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-6 px-6 text-center">
@@ -28,12 +27,12 @@ export default function HomePage() {
           publish. No coding needed.
         </p>
         <div className="flex gap-3">
-          <Button size="lg" nativeButton={false} render={<Link href="/signup" />}>
+          <ButtonLink size="lg" href="/signup">
             Get started free
-          </Button>
-          <Button size="lg" variant="outline" nativeButton={false} render={<Link href="/login" />}>
+          </ButtonLink>
+          <ButtonLink size="lg" variant="outline" href="/login">
             Log in
-          </Button>
+          </ButtonLink>
         </div>
       </main>
     </div>

@@ -432,6 +432,7 @@ sites
   id              uuid pk
   ownerId         text fk → user.id
   name            text
+  kind            text                 // saas / company / restaurant / other (picked at creation)
   subdomain       text unique          // "bella" → bella.builder.app
   customDomain    text unique null     // P2
   templateKey     text null
@@ -533,7 +534,7 @@ Templates are stored as seed JSON (same shape as a site snapshot) and are **clon
 
 > Estimates assume one developer, part-time. Adjust as needed.
 
-### Phase 0 — Foundation (≈1 week)
+### Phase 0 — Foundation (≈1 week) ✅ done 2026-10-09
 
 - Next.js + TypeScript + Tailwind + shadcn/ui setup, ESLint/Prettier
 - Postgres + Drizzle config, migrations workflow, seed script
@@ -542,7 +543,7 @@ Templates are stored as seed JSON (same shape as a site snapshot) and are **clon
 - CI: typecheck, lint, test
 - **Done when:** a user can sign up, verify email, log in and see an empty dashboard.
 
-### Phase 1 — Sites & pages (≈1–2 weeks)
+### Phase 1 — Sites & pages (≈1–2 weeks) ✅ done 2026-10-09
 
 - `sites`, `pages` schema + server actions with authorization helpers
 - Sites list, create site (simple form for now), site settings, soft delete
