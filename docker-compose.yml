@@ -1,0 +1,17 @@
+# Optional local Postgres. Uses port 5433 so it doesn't clash with a Postgres already on 5432.
+# DATABASE_URL=postgres://postgres:postgres@localhost:5433/side_quest
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: side_quest
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
