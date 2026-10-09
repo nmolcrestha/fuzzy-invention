@@ -1,0 +1,138 @@
+/*
+ * Styles for websites built with the builder (editor preview and, later, published sites).
+ * Everything is scoped to .sq-site and driven by --sq-* tokens, which the site theme overrides.
+ */
+.sq-site {
+  --sq-bg: #ffffff;
+  --sq-fg: #18181b;
+  --sq-primary: #4f46e5;
+  --sq-primary-fg: #ffffff;
+  --sq-muted: #f4f4f5;
+  --sq-muted-fg: #52525b;
+  --sq-surface: #ffffff;
+  --sq-border: #e4e4e7;
+  --sq-radius: 0.75rem;
+  --sq-font-heading: var(--font-sans);
+  --sq-font-body: var(--font-sans);
+
+  background: var(--sq-bg);
+  color: var(--sq-fg);
+  font-family: var(--sq-font-body);
+}
+
+.sq-site h1,
+.sq-site h2,
+.sq-site h3 {
+  font-family: var(--sq-font-heading);
+  text-wrap: balance;
+}
+
+/* ---- Section backgrounds: each one re-maps the tokens its content uses ---- */
+.sq-site [data-bg="muted"] {
+  background: var(--sq-muted);
+  --sq-surface: var(--sq-bg);
+}
+.sq-site [data-bg="primary"] {
+  background: var(--sq-primary);
+  --sq-fg: var(--sq-primary-fg);
+  --sq-muted-fg: color-mix(in oklab, var(--sq-primary-fg) 80%, transparent);
+  --sq-border: color-mix(in oklab, var(--sq-primary-fg) 25%, transparent);
+  --sq-surface: color-mix(in oklab, var(--sq-primary-fg) 10%, transparent);
+  color: var(--sq-fg);
+}
+.sq-site [data-bg="dark"] {
+  background: #0b0b0f;
+  --sq-fg: #fafafa;
+  --sq-muted-fg: #a1a1aa;
+  --sq-border: #27272a;
+  --sq-surface: #18181b;
+  color: var(--sq-fg);
+}
+
+/* ---- Section spacing ---- */
+.sq-site [data-spacing] {
+  padding-block: 4rem;
+}
+.sq-site [data-spacing="compact"] {
+  padding-block: 2.5rem;
+}
+.sq-site [data-spacing="spacious"] {
+  padding-block: 6rem;
+}
+@media (min-width: 768px) {
+  .sq-site [data-spacing] {
+    padding-block: 6rem;
+  }
+  .sq-site [data-spacing="compact"] {
+    padding-block: 3.5rem;
+  }
+  .sq-site [data-spacing="spacious"] {
+    padding-block: 9rem;
+  }
+}
+
+/* ---- Buttons ---- */
+.sq-site .sq-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--sq-radius);
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition:
+    filter 150ms,
+    background-color 150ms;
+}
+.sq-site .sq-btn-primary {
+  background: var(--sq-primary);
+  color: var(--sq-primary-fg);
+}
+.sq-site .sq-btn-primary:hover {
+  filter: brightness(1.08);
+}
+.sq-site .sq-btn-secondary {
+  border: 1px solid var(--sq-border);
+  color: var(--sq-fg);
+}
+.sq-site .sq-btn-secondary:hover {
+  background: color-mix(in oklab, var(--sq-fg) 6%, transparent);
+}
+/* On a primary-colored background, flip the main button so it stays visible. */
+.sq-site [data-bg="primary"] .sq-btn-primary {
+  background: var(--sq-primary-fg);
+  color: var(--sq-primary);
+}
+
+/* ---- Rich text ---- */
+.sq-site .sq-prose > * + * {
+  margin-top: 1em;
+}
+.sq-site .sq-prose h2 {
+  font-size: 1.5em;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-top: 1.5em;
+}
+.sq-site .sq-prose h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  margin-top: 1.25em;
+}
+.sq-site .sq-prose ul {
+  list-style: disc;
+  padding-left: 1.4em;
+}
+.sq-site .sq-prose ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+}
+.sq-site .sq-prose li + li {
+  margin-top: 0.35em;
+}
+.sq-site .sq-prose a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

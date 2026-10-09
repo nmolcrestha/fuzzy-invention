@@ -14,6 +14,10 @@ export function describeActivity({ action, metadata: m }: Entry): string {
         ? `updated the website's ${joinList(changed)}`
         : "updated the website settings";
     }
+    case "site.design_edited":
+      return "edited the header or footer";
+    case "page.content_edited":
+      return `edited the content of “${str(m.title)}”`;
     case "site.deleted":
       return "deleted the website";
     case "site.restored":

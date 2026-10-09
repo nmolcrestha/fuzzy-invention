@@ -2,7 +2,8 @@ import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
 
 /**
- * Optimistic auth check only: redirects visitors without a session cookie away from the dashboard.
+ * Optimistic auth check only: redirects visitors without a session cookie away from the dashboard,
+ * editor and draft previews.
  * Real authorization happens in the Data Access Layer (`requireUser`) and in every server action.
  */
 export function proxy(request: NextRequest) {
@@ -15,5 +16,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/dashboard/:path*", "/editor/:path*", "/preview/:path*"],
 };

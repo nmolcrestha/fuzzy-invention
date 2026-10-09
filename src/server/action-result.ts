@@ -1,8 +1,15 @@
 import type { z } from "zod";
 
 /** What every server action returns. Errors are plain-language and safe to show to the user. */
-export type ActionResult<T = void> =
-  { ok: true; data: T } | { ok: false; error: string; fieldErrors?: Record<string, string> };
+export type ActionFailure = {
+  ok: false;
+  error: string;
+  fieldErrors?: Record<string, string>;
+  /** Machine-readable reason when the UI must react differently (e.g. "conflict"). */
+  code?: "conflict";
+};
+
+export type ActionResult<T = void> = { ok: true; data: T } | ActionFailure;
 
 export function ok(): ActionResult<void>;
 export function ok<T>(data: T): ActionResult<T>;
@@ -10,10 +17,7 @@ export function ok<T>(data?: T): ActionResult<T | undefined> {
   return { ok: true, data };
 }
 
-export function fail(
-  error: string,
-  fieldErrors?: Record<string, string>,
-): { ok: false; error: string; fieldErrors?: Record<string, string> } {
+export function fail(error: string, fieldErrors?: Record<string, string>): ActionFailure {
   return { ok: false, error, fieldErrors };
 }
 

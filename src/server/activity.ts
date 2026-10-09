@@ -10,6 +10,8 @@ export type ActivityAction =
   | "site.updated"
   | "site.deleted"
   | "site.restored"
+  | "site.design_edited"
+  | "page.content_edited"
   | "page.created"
   | "page.updated"
   | "page.duplicated"

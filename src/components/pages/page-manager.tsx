@@ -31,9 +31,11 @@ import {
   PlusIcon,
   Trash2Icon,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ButtonLink } from "@/components/button-link";
 import { EmptyState } from "@/components/empty-state";
 import { PageFormDialog } from "@/components/pages/page-form-dialog";
 import { PageStatusBadge } from "@/components/sites/status-badge";
@@ -220,6 +222,7 @@ export function PageManager({
                 <SortablePageRow
                   key={page.id}
                   page={page}
+                  editorHref={`/editor/${siteId}/${page.id}`}
                   isFirst={index === 0}
                   isLast={index === items.length - 1}
                   onMoveUp={() => move(index, -1)}
@@ -249,6 +252,7 @@ export function PageManager({
 
 type RowProps = {
   page: PageRow;
+  editorHref: string;
   isFirst: boolean;
   isLast: boolean;
   onMoveUp: () => void;
@@ -260,7 +264,7 @@ type RowProps = {
   onDelete: () => void;
 };
 
-function SortablePageRow({ page, isFirst, isLast, ...actions }: RowProps) {
+function SortablePageRow({ page, editorHref, isFirst, isLast, ...actions }: RowProps) {
   const {
     attributes,
     listeners,
@@ -293,13 +297,9 @@ function SortablePageRow({ page, isFirst, isLast, ...actions }: RowProps) {
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={actions.onEdit}
-            className="truncate text-left font-medium hover:underline"
-          >
+          <Link href={editorHref} className="truncate font-medium hover:underline">
             {page.title}
-          </button>
+          </Link>
           {page.isHome && (
             <Badge variant="secondary" className="gap-1">
               <HomeIcon className="size-3" aria-hidden />
@@ -322,6 +322,11 @@ function SortablePageRow({ page, isFirst, isLast, ...actions }: RowProps) {
         </div>
         <p className="truncate text-sm text-muted-foreground">{page.path}</p>
       </div>
+
+      <ButtonLink href={editorHref} variant="outline" size="sm" className="hidden sm:inline-flex">
+        <PencilIcon aria-hidden />
+        Edit content
+      </ButtonLink>
 
       <div className="hidden sm:block">
         <PageStatusBadge

@@ -1,10 +1,10 @@
 "use server";
 
-import { and, eq, gt, isNull, max, ne, sql } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, max, ne, sql } from "drizzle-orm";
 import { refresh } from "next/cache";
 
 import { db } from "@/db";
-import { pages, type Page, sites } from "@/db/schema";
+import { pages, type Page, pageSections, sections, sites } from "@/db/schema";
 import { requireUser } from "@/lib/session";
 import { pathFromTitle, uniqueVariant } from "@/lib/slug";
 import { logActivity } from "@/server/activity";
@@ -319,7 +319,43 @@ export async function duplicatePage(pageId: string): Promise<ActionResult<{ page
           seo: page.seo,
         })
         .returning();
-      // Sections are copied here too once they exist (Phase 2).
+
+      // Copy the page's sections. Local sections get new copies; shared ones stay linked.
+      const placements = await tx
+        .select({ section: sections, isHidden: pageSections.isHidden })
+        .from(pageSections)
+        .innerJoin(sections, eq(pageSections.sectionId, sections.id))
+        .where(eq(pageSections.pageId, page.id))
+        .orderBy(asc(pageSections.position));
+      const copies = placements.map(({ section, isHidden }) => ({
+        sectionId: section.isShared ? section.id : globalThis.crypto.randomUUID(),
+        isHidden,
+        section,
+      }));
+      const localCopies = copies.filter((copy) => !copy.section.isShared);
+      if (localCopies.length > 0) {
+        await tx.insert(sections).values(
+          localCopies.map(({ sectionId, section }) => ({
+            id: sectionId,
+            siteId: section.siteId,
+            type: section.type,
+            variant: section.variant,
+            schemaVersion: section.schemaVersion,
+            data: section.data,
+            style: section.style,
+          })),
+        );
+      }
+      if (copies.length > 0) {
+        await tx.insert(pageSections).values(
+          copies.map(({ sectionId, isHidden }, position) => ({
+            pageId: created!.id,
+            sectionId,
+            position,
+            isHidden,
+          })),
+        );
+      }
 
       await touchSite(tx, page.siteId);
       await logActivity(tx, {

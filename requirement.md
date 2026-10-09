@@ -551,12 +551,14 @@ Templates are stored as seed JSON (same shape as a site snapshot) and are **clon
 - Activity log writes
 - **Done when:** a user can manage multiple sites and their pages.
 
-### Phase 2 — Section system & editor (≈3–4 weeks) ⭐ core
+### Phase 2 — Section system & editor (≈3–4 weeks) ⭐ core ✅ done 2026-10-09
 
-- `defineSection` registry + field types (text, rich text via Tiptap, image, link, list, select, toggle)
-- Tiptap field component with a configurable toolbar + server-side JSON→HTML renderer
-- Auto-generated settings forms from Zod schemas
-- 6 initial sections: Navbar, Hero, Features, CTA, FAQ, Footer
+- `defineSection` registry + field types (text, rich text via Tiptap, image, link, list, select, toggle, icon)
+- Tiptap field component with a configurable toolbar + a React renderer for the stored Tiptap JSON (allow-listed nodes, sanitized links, no raw HTML)
+- Settings forms generated from field definitions, which also produce the Zod schemas
+- Initial sections: Header and Footer (site design, stored on the site), Hero, Features, Text, CTA, FAQ
+- Drafts are validated structurally; required fields are flagged in the editor and checked at publish (Phase 3)
+- Image fields take a URL until uploads arrive in Phase 5
 - Editor 3-panel layout, preview iframe + postMessage bridge, select/hover
 - Add / reorder (dnd-kit) / duplicate / hide / delete sections; variant switching
 - Autosave + status indicator, undo/redo, unsaved-changes guard

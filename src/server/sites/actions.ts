@@ -4,9 +4,10 @@ import { and, eq, gt, isNotNull, ne } from "drizzle-orm";
 import { refresh } from "next/cache";
 
 import { db } from "@/db";
-import { pages, sites } from "@/db/schema";
+import { pages, pageSections, sections, sites } from "@/db/schema";
 import { requireUser } from "@/lib/session";
 import { subdomainProblem } from "@/lib/slug";
+import { newSectionBlock } from "@/sections/registry";
 import { logActivity } from "@/server/activity";
 import {
   type ActionResult,
@@ -79,6 +80,19 @@ export async function createSite(
         .insert(pages)
         .values({ siteId: site!.id, title: "Home", path: "/", isHome: true, position: 0 })
         .returning({ id: pages.id });
+
+      // Start the homepage with a hero so the editor never opens on a blank page.
+      const hero = newSectionBlock("hero");
+      await tx.insert(sections).values({
+        id: hero.id,
+        siteId: site!.id,
+        type: hero.type,
+        variant: hero.variant,
+        schemaVersion: hero.schemaVersion,
+        data: { ...hero.data, heading: `Welcome to ${name}` },
+        style: hero.style,
+      });
+      await tx.insert(pageSections).values({ pageId: home!.id, sectionId: hero.id, position: 0 });
 
       await logActivity(tx, {
         siteId: site!.id,

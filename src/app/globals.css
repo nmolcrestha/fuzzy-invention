@@ -1,10 +1,22 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "../sections/site.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Published-site theme tokens (set per site on .sq-site, see sections/site.css) */
+  --color-sq-bg: var(--sq-bg);
+  --color-sq-fg: var(--sq-fg);
+  --color-sq-primary: var(--sq-primary);
+  --color-sq-primary-fg: var(--sq-primary-fg);
+  --color-sq-muted: var(--sq-muted);
+  --color-sq-muted-fg: var(--sq-muted-fg);
+  --color-sq-surface: var(--sq-surface);
+  --color-sq-border: var(--sq-border);
+  --radius-sq: var(--sq-radius);
+  --font-sq-heading: var(--sq-font-heading);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
