@@ -17,9 +17,10 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { Field, ImageValue, LinkValue, ListItem } from "@/sections/fields";
+import { fieldIsEmpty } from "@/sections/checks";
 import { ICONS } from "@/sections/icon-map";
 import { ICON_NAMES, type IconName } from "@/sections/icons";
-import { type RichTextDoc, richTextIsEmpty, safeHref } from "@/sections/rich-text";
+import { type RichTextDoc, safeHref } from "@/sections/rich-text";
 
 import { useEditorMeta } from "./editor-meta";
 import { RichTextInput } from "./rich-text-input";
@@ -32,26 +33,11 @@ type FieldInputProps = {
   onChange: FieldChange;
 };
 
-function isEmpty(field: Field, value: unknown) {
-  switch (field.kind) {
-    case "text":
-      return !String(value ?? "").trim();
-    case "richText":
-      return richTextIsEmpty(value as RichTextDoc);
-    case "image":
-      return !(value as ImageValue)?.src;
-    case "link":
-      return !(value as LinkValue)?.label?.trim();
-    default:
-      return false;
-  }
-}
-
 /** A labelled input for one section field. */
 export function FieldInput({ field, value, onChange }: FieldInputProps) {
   const id = useId();
   const helpId = `${id}-help`;
-  const missing = field.required && isEmpty(field, value);
+  const missing = field.required && fieldIsEmpty(field, value);
 
   if (field.kind === "toggle") {
     return (

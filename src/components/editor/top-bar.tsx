@@ -5,6 +5,7 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ExternalLinkIcon,
+  GlobeIcon,
   HomeIcon,
   LayersIcon,
   MonitorIcon,
@@ -62,11 +63,13 @@ export function TopBar({
   onRetrySave,
   onOpenSections,
   onOpenSettings,
+  onPublish,
 }: {
   onNavigate: (href: string) => void;
   onRetrySave: () => void;
   onOpenSections: () => void;
   onOpenSettings: () => void;
+  onPublish: () => void;
 }) {
   const { site, page, pages } = useEditorMeta();
   const device = useEditor((state) => state.device);
@@ -163,16 +166,10 @@ export function TopBar({
           <ExternalLinkIcon aria-hidden />
           Preview
         </Button>
-        <Tooltip>
-          <TooltipTrigger render={<span tabIndex={0} />}>
-            <Button size="sm" disabled>
-              Publish
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-60">
-            Publishing arrives in the next update. Your changes are safely saved as a draft.
-          </TooltipContent>
-        </Tooltip>
+        <Button size="sm" onClick={onPublish}>
+          <GlobeIcon aria-hidden />
+          Publish
+        </Button>
       </div>
     </header>
   );

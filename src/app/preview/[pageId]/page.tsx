@@ -27,8 +27,10 @@ async function Preview({ params, searchParams }: PageProps<"/preview/[pageId]">)
   return (
     <PreviewClient
       initialDoc={data.doc}
+      initialTheme={data.theme}
       site={data.siteContext}
       embedded={query.embed === "1"}
+      selectable={query.mode !== "view"}
       sectionNames={SECTION_NAMES}
     />
   );

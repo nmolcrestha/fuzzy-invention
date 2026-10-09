@@ -11,13 +11,23 @@ import {
 } from "@/components/ui/dialog";
 import { SECTION_COMPONENTS, type SiteContext } from "@/sections/components";
 import { newSectionBlock, PAGE_SECTION_TYPES } from "@/sections/registry";
+import { themeProps } from "@/sections/site-page";
+import type { SiteTheme } from "@/sections/theme";
 import { CATEGORY_LABELS, type SectionCategory } from "@/sections/types";
 
 const THUMB_WIDTH = 1200;
 const SCALE = 0.25;
 
 /** A real render of the section with its default content, scaled down. */
-function SectionThumb({ type, site }: { type: string; site: SiteContext }) {
+function SectionThumb({
+  type,
+  site,
+  theme,
+}: {
+  type: string;
+  site: SiteContext;
+  theme: SiteTheme;
+}) {
   const block = useMemo(() => newSectionBlock(type), [type]);
   const Component = SECTION_COMPONENTS[type];
   if (!Component) return null;
@@ -28,8 +38,9 @@ function SectionThumb({ type, site }: { type: string; site: SiteContext }) {
       inert
     >
       <div
+        {...themeProps(theme)}
         className="sq-site origin-top-left"
-        style={{ width: THUMB_WIDTH, transform: `scale(${SCALE})` }}
+        style={{ ...themeProps(theme).style, width: THUMB_WIDTH, transform: `scale(${SCALE})` }}
       >
         <section data-spacing="compact">
           <Component data={block.data} variant={block.variant} site={site} />
@@ -44,11 +55,13 @@ export function SectionPicker({
   onOpenChange,
   onPick,
   site,
+  theme,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPick: (type: string) => void;
   site: SiteContext;
+  theme: SiteTheme;
 }) {
   const groups = useMemo(() => {
     const byCategory = new Map<SectionCategory, typeof PAGE_SECTION_TYPES>();
@@ -81,7 +94,7 @@ export function SectionPicker({
                       onClick={() => onPick(def.type)}
                       className="grid w-full gap-2 rounded-xl border p-2 text-left transition-colors hover:border-primary hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
                     >
-                      <SectionThumb type={def.type} site={site} />
+                      <SectionThumb type={def.type} site={site} theme={theme} />
                       <span className="px-1">
                         <span className="block font-medium">{def.name}</span>
                         <span className="block text-sm text-muted-foreground">

@@ -24,9 +24,10 @@ export async function listMySites() {
       updatedAt: sites.updatedAt,
       pageCount: count(pages.id),
       changedPageCount:
-        sql<number>`count(${pages.id}) filter (where ${pages.hasUnpublishedChanges})`.mapWith(
+        sql<number>`count(${pages.id}) filter (where ${pages.hasUnpublishedChanges} or ${pages.publishedVersionId} is null)`.mapWith(
           Number,
         ),
+      designChanged: sites.designHasUnpublishedChanges,
     })
     .from(sites)
     .leftJoin(pages, and(eq(pages.siteId, sites.id), isNull(pages.deletedAt)))
@@ -53,14 +54,14 @@ export const getMySiteOr404 = cache(async (siteId: string) => {
   return site;
 });
 
-export async function listPages(siteId: string) {
+export const listPages = cache(async (siteId: string) => {
   const site = await getMySiteOr404(siteId);
   return db
     .select()
     .from(pages)
     .where(and(eq(pages.siteId, site.id), isNull(pages.deletedAt)))
     .orderBy(asc(pages.position), asc(pages.createdAt));
-}
+});
 
 export async function listActivity(siteId: string, limit = 50) {
   const site = await getMySiteOr404(siteId);

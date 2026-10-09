@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import type { SiteContext } from "@/sections/components";
 import { type PageDocument, SitePage } from "@/sections/site-page";
+import type { SiteTheme } from "@/sections/theme";
 
 import { type FromPreview, isMessage, type ToPreview } from "./preview-protocol";
 
@@ -13,16 +14,23 @@ import { type FromPreview, isMessage, type ToPreview } from "./preview-protocol"
  */
 export function PreviewClient({
   initialDoc,
+  initialTheme,
   site,
   embedded,
+  selectable,
   sectionNames,
 }: {
   initialDoc: PageDocument;
+  initialTheme: SiteTheme;
   site: SiteContext;
+  /** Inside an editor iframe: follows postMessage updates. */
   embedded: boolean;
+  /** Clicking selects sections (editor). Off for the Design tab, which only shows the page. */
+  selectable: boolean;
   sectionNames: Record<string, string>;
 }) {
   const [doc, setDoc] = useState(initialDoc);
+  const [theme, setTheme] = useState(initialTheme);
   const [selection, setSelection] = useState<{
     selectedId: string | null;
     hoveredId: string | null;
@@ -40,6 +48,7 @@ export function PreviewClient({
       if (event.source !== window.parent || !isMessage<ToPreview>(event)) return;
       const message = event.data;
       if (message.type === "sq:doc") setDoc(message.doc);
+      else if (message.type === "sq:theme") setTheme(message.theme);
       else if (message.type === "sq:selection") setSelection(message);
       else if (message.type === "sq:scroll") {
         document
@@ -72,18 +81,25 @@ export function PreviewClient({
       post({ type: "sq:hover", id: null });
     };
 
+    const onLinkClick = (event: MouseEvent) => event.preventDefault();
+
     window.addEventListener("message", onMessage);
-    document.addEventListener("click", onClick, true);
-    document.addEventListener("mousemove", onMove);
-    document.documentElement.addEventListener("mouseleave", onLeave);
+    if (selectable) {
+      document.addEventListener("click", onClick, true);
+      document.addEventListener("mousemove", onMove);
+      document.documentElement.addEventListener("mouseleave", onLeave);
+    } else {
+      document.addEventListener("click", onLinkClick, true);
+    }
     post({ type: "sq:ready" });
     return () => {
       window.removeEventListener("message", onMessage);
       document.removeEventListener("click", onClick, true);
+      document.removeEventListener("click", onLinkClick, true);
       document.removeEventListener("mousemove", onMove);
       document.documentElement.removeEventListener("mouseleave", onLeave);
     };
-  }, [embedded]);
+  }, [embedded, selectable]);
 
   useEffect(() => {
     if (embedded) return;
@@ -102,7 +118,7 @@ export function PreviewClient({
 
   return (
     <>
-      {embedded && (
+      {embedded && selectable && (
         <style>
           {`[data-sq-id]{position:relative;cursor:pointer}` +
             highlight(selection.hoveredId, "outline:2px dashed #6366f1;outline-offset:-2px") +
@@ -120,7 +136,7 @@ export function PreviewClient({
           published.
         </div>
       )}
-      <SitePage doc={doc} site={site} />
+      <SitePage doc={doc} site={site} theme={theme} />
     </>
   );
 }

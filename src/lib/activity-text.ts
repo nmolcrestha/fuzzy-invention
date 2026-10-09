@@ -14,6 +14,22 @@ export function describeActivity({ action, metadata: m }: Entry): string {
         ? `updated the website's ${joinList(changed)}`
         : "updated the website settings";
     }
+    case "site.published": {
+      const titles = Array.isArray(m.pages) ? (m.pages as string[]) : [];
+      const parts = [
+        ...(titles.length
+          ? [titles.length === 1 ? `“${titles[0]}”` : `${titles.length} pages`]
+          : []),
+        ...(m.design ? ["the site design"] : []),
+      ];
+      return `published ${joinList(parts)}`;
+    }
+    case "site.theme_changed":
+      return "changed the colors and fonts";
+    case "site.menu_changed":
+      return "changed the menu or social links";
+    case "page.unpublished":
+      return `took “${str(m.title)}” off the live website`;
     case "site.design_edited":
       return "edited the header or footer";
     case "page.content_edited":

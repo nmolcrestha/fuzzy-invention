@@ -20,6 +20,8 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  CloudOffIcon,
+  GlobeIcon,
   CopyIcon,
   EyeIcon,
   EyeOffIcon,
@@ -36,8 +38,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { ButtonLink } from "@/components/button-link";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { PageFormDialog } from "@/components/pages/page-form-dialog";
+import { PublishDialog } from "@/components/publish/publish-dialog";
 import { PageStatusBadge } from "@/components/sites/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,6 +62,7 @@ import {
   setHomePage,
   setPageInNav,
 } from "@/server/pages/actions";
+import { unpublishPage } from "@/server/publish/actions";
 
 export type PageRow = {
   id: string;
@@ -75,11 +80,18 @@ export function PageManager({
   siteId,
   subdomain,
   pages,
+  designChanged,
 }: {
   siteId: string;
   subdomain: string;
   pages: PageRow[];
+  /** Site design (theme, header/footer, menu) has unpublished changes. */
+  designChanged: boolean;
 }) {
+  const [publishOpen, setPublishOpen] = useState(false);
+  const unpublishedCount =
+    pages.filter((page) => !page.publishedAt || page.hasUnpublishedChanges).length +
+    (designChanged ? 1 : 0);
   // Local copy for optimistic reordering; reset whenever the server sends a new list.
   const [items, setItems] = useState(pages);
   const [serverPages, setServerPages] = useState(pages);
@@ -125,21 +137,26 @@ export function PageManager({
       toast.error(result.error);
       return;
     }
-    toast(`Deleted “${page.title}”.`, {
-      duration: UNDO_MS,
-      action: {
-        label: "Undo",
-        onClick: async () => {
-          const restored = await restorePage(page.id);
-          if (!restored.ok) toast.error(restored.error);
-          else if (restored.data.pathChanged) {
-            toast.success(
-              `“${page.title}” is back at ${restored.data.path}, because ${page.path} is now used by another page.`,
-            );
-          } else toast.success(`“${page.title}” is back.`);
+    toast(
+      result.data.wasLive
+        ? `Deleted “${page.title}”. It's no longer on your live website.`
+        : `Deleted “${page.title}”.`,
+      {
+        duration: UNDO_MS,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            const restored = await restorePage(page.id);
+            if (!restored.ok) toast.error(restored.error);
+            else if (restored.data.pathChanged) {
+              toast.success(
+                `“${page.title}” is back at ${restored.data.path}, because ${page.path} is now used by another page.`,
+              );
+            } else toast.success(`“${page.title}” is back.`);
+          },
         },
       },
-    });
+    );
   }
 
   async function handleSetHome(page: PageRow) {
@@ -180,6 +197,12 @@ export function PageManager({
     );
   }
 
+  async function handleUnpublish(page: PageRow) {
+    const result = await unpublishPage(page.id);
+    if (!result.ok) throw new Error(result.error);
+    toast.success(`“${page.title}” is offline. It's still here as a draft.`);
+  }
+
   async function handleDuplicate(page: PageRow) {
     const result = await duplicatePage(page.id);
     if (!result.ok) toast.error(result.error);
@@ -198,10 +221,16 @@ export function PageManager({
             Drag to reorder. Your website menu follows this order.
           </p>
         </div>
-        <Button onClick={() => setDialog({ open: true })}>
-          <PlusIcon aria-hidden />
-          Add page
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setDialog({ open: true })}>
+            <PlusIcon aria-hidden />
+            Add page
+          </Button>
+          <Button onClick={() => setPublishOpen(true)}>
+            <GlobeIcon aria-hidden />
+            {unpublishedCount > 0 ? `Publish changes (${unpublishedCount})` : "Publish"}
+          </Button>
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -231,6 +260,7 @@ export function PageManager({
                   onSetHome={() => handleSetHome(page)}
                   onToggleNav={() => handleToggleNav(page)}
                   onDuplicate={() => handleDuplicate(page)}
+                  onUnpublish={() => handleUnpublish(page)}
                   onDelete={() => handleDelete(page)}
                 />
               ))}
@@ -238,6 +268,8 @@ export function PageManager({
           </SortableContext>
         </DndContext>
       )}
+
+      <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} siteId={siteId} />
 
       <PageFormDialog
         open={dialog.open}
@@ -261,6 +293,7 @@ type RowProps = {
   onSetHome: () => void;
   onToggleNav: () => void;
   onDuplicate: () => void;
+  onUnpublish: () => Promise<void>;
   onDelete: () => void;
 };
 
@@ -389,6 +422,25 @@ function SortablePageRow({ page, editorHref, isFirst, isLast, ...actions }: RowP
               {page.showInNav ? <EyeOffIcon aria-hidden /> : <EyeIcon aria-hidden />}
               {page.showInNav ? "Hide from menu" : "Show in menu"}
             </DropdownMenuItem>
+            {page.publishedAt && !page.isHome && (
+              <ConfirmDialog
+                trigger={
+                  <DropdownMenuItem closeOnClick={false}>
+                    <CloudOffIcon aria-hidden />
+                    Take offline
+                  </DropdownMenuItem>
+                }
+                title={`Take “${page.title}” offline?`}
+                description="The page stays here as a draft. You can publish it again any time."
+                consequences={[
+                  `Visitors to ${page.path} will see a “page not found” error.`,
+                  "It disappears from your live menu.",
+                ]}
+                confirmLabel="Take page offline"
+                tone="destructive"
+                onConfirm={actions.onUnpublish}
+              />
+            )}
             <DropdownMenuItem onClick={actions.onDuplicate}>
               <CopyIcon aria-hidden />
               Duplicate

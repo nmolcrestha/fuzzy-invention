@@ -10,6 +10,8 @@ export function SiteTabs({ siteId }: { siteId: string }) {
   const base = `/dashboard/sites/${siteId}`;
   const tabs = [
     { href: base, label: "Pages" },
+    { href: `${base}/design`, label: "Design" },
+    { href: `${base}/menu`, label: "Menu & social" },
     { href: `${base}/settings`, label: "Settings" },
     { href: `${base}/activity`, label: "Activity" },
   ];

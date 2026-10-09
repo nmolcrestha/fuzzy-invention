@@ -45,6 +45,7 @@ src/
 │   │   └── sites/[siteId]/  # pages, settings, activity
 │   ├── editor/[siteId]/[pageId]/ # full-screen visual editor
 │   ├── preview/[pageId]/  # draft render (editor iframe & "Preview" tab)
+│   ├── %5Fsites/[subdomain]/ # published sites (URL /_sites/…, reached only via proxy rewrite)
 │   ├── api/auth/[...all]/ # Better Auth handler
 │   └── page.tsx           # marketing home (placeholder)
 ├── components/
@@ -70,8 +71,15 @@ src/
 │   ├── registry.ts        # lookup, normalize/validate blocks, header/footer defaults
 │   ├── components.tsx     # section React components (no hooks: render anywhere)
 │   ├── rich-text*.ts(x)   # Tiptap JSON allow-list + safe renderer
+│   ├── theme.ts           # theme presets, fonts, CSS variables, contrast checks
+│   ├── navigation.ts      # extra menu links & social profiles
+│   ├── snapshot.ts        # what a publish freezes (page & site-design versions)
+│   ├── checks.ts          # pre-publish checks
 │   └── site.css           # --sq-* theme tokens and website styles
 ├── server/
+│   ├── publish/           # publish summary, publishChanges, unpublishPage
+│   ├── live/              # cached loaders for published sites ('use cache' + tags)
+│   ├── live-cache.ts      # cache tags + invalidateLiveSite()
 │   ├── editor/            # load editor data, saveDraft (revision-checked autosave)
 │   ├── sites/             # access checks, queries, server actions, shared Zod schemas
 │   ├── pages/             # page server actions
@@ -81,6 +89,10 @@ src/
 └── proxy.ts               # optimistic redirect for /dashboard (Next 16 "proxy" = middleware)
 ```
 
+## Viewing published sites locally
+
+Published sites are served at `http://<subdomain>.localhost:3000`. Chrome, Edge and Firefox resolve `*.localhost` to your machine, so no hosts-file changes are needed. `proxy.ts` rewrites those hosts to `/_sites/<subdomain>/…`.
+
 ## Conventions
 
 - **Authorization lives in the Data Access Layer.** `proxy.ts` only does an optimistic cookie check. Every page, server action and route handler must call `requireUser()`, and every site/page read or write goes through `findOwnedSite` / `findOwnedPage` in `src/server/sites/access.ts`.
@@ -89,4 +101,5 @@ src/
 - **Server actions return `ActionResult`** and never throw for expected problems. Every change writes an activity log entry and calls `refresh()`.
 - **Adding a section type:** add its fields/variants to `src/sections/defs.ts`, register it in `registry.ts` and add the component to `components.tsx`. The editor form, validation and picker preview follow automatically. Keep section components free of hooks.
 - **Editor saves** send the full ordered section list with the page's `draftRevision` (and header/footer with `designRevision`). A stale revision returns a conflict instead of overwriting.
+- **Drafts vs live:** the dashboard and editor only touch drafts. Visitors only ever see `page_versions` / `site_versions` snapshots, loaded through `src/server/live`. Anything that changes what visitors see must call `invalidateLiveSite()`.
 - **Soft deletes.** Sites and pages have `deletedAt`. Sites can be restored for 30 days. Deleted pages can be undone from the toast.

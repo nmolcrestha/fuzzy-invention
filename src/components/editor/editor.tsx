@@ -2,7 +2,7 @@
 
 import { AlertTriangleIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   AlertDialog,
@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { PublishDialog } from "@/components/publish/publish-dialog";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import type { EditorData } from "@/server/editor/queries";
 
@@ -51,6 +52,8 @@ function EditorShell({ data, store }: { data: EditorData; store: EditorStore }) 
   const [picker, setPicker] = useState<{ open: boolean; index: number }>({ open: false, index: 0 });
   const [leaveTo, setLeaveTo] = useState<string | null>(null);
   const [panel, setPanel] = useState<"sections" | "settings" | null>(null);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const saveBeforePublish = useCallback(() => flush(), [flush]);
 
   useUndoShortcuts(store);
 
@@ -84,6 +87,7 @@ function EditorShell({ data, store }: { data: EditorData; store: EditorStore }) 
         onRetrySave={() => void retryNow()}
         onOpenSections={() => setPanel("sections")}
         onOpenSettings={() => setPanel("settings")}
+        onPublish={() => setPublishOpen(true)}
       />
 
       {status.state === "conflict" && (
@@ -139,10 +143,19 @@ function EditorShell({ data, store }: { data: EditorData; store: EditorStore }) 
         open={picker.open}
         onOpenChange={(open) => setPicker((current) => ({ ...current, open }))}
         site={data.siteContext}
+        theme={data.theme}
         onPick={(type) => {
           actions.insert(type, picker.index);
           setPicker((current) => ({ ...current, open: false }));
         }}
+      />
+
+      <PublishDialog
+        open={publishOpen}
+        onOpenChange={setPublishOpen}
+        siteId={data.site.id}
+        currentPageId={data.page.id}
+        beforePublish={saveBeforePublish}
       />
 
       <AlertDialog open={leaveTo !== null} onOpenChange={(open) => !open && setLeaveTo(null)}>

@@ -1,10 +1,12 @@
 import type { PageDocument } from "@/sections/site-page";
+import type { SiteTheme } from "@/sections/theme";
 
 /** Messages between the editor (parent) and the preview iframe. Same-origin only. */
 export type ToPreview =
   | { type: "sq:doc"; doc: PageDocument }
   | { type: "sq:selection"; selectedId: string | null; hoveredId: string | null }
-  | { type: "sq:scroll"; id: string };
+  | { type: "sq:scroll"; id: string }
+  | { type: "sq:theme"; theme: SiteTheme };
 
 export type FromPreview =
   | { type: "sq:ready" }

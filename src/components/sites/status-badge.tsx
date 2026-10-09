@@ -33,10 +33,11 @@ function StatusBadge({
 
 export function SiteStatusBadge({
   status,
-  changedPageCount = 0,
+  changeCount = 0,
 }: {
   status: "draft" | "live" | "offline";
-  changedPageCount?: number;
+  /** Pages with unpublished changes, plus 1 if the site design changed. */
+  changeCount?: number;
 }) {
   if (status === "offline") {
     return (
@@ -56,13 +57,13 @@ export function SiteStatusBadge({
       />
     );
   }
-  if (changedPageCount > 0) {
-    const pages = changedPageCount === 1 ? "1 page has" : `${changedPageCount} pages have`;
+  if (changeCount > 0) {
+    const pages = changeCount === 1 ? "there's 1 change" : `there are ${changeCount} changes`;
     return (
       <StatusBadge
         tone="changed"
         label="Live · unpublished changes"
-        explanation={`Your website is live, but ${pages} changes visitors can't see yet.`}
+        explanation={`Your website is live, but ${pages} visitors can't see yet.`}
       />
     );
   }

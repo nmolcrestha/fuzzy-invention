@@ -20,11 +20,32 @@ import { RichTextView } from "./rich-text-view";
 
 export type SiteContext = {
   siteName: string;
-  /** Pages shown in the menu, in order. */
+  /** Menu items in order: pages, then any extra links. */
   nav: { label: string; href: string }[];
   contact: { email?: string; phone?: string; address?: string };
+  social: { label: string; href: string }[];
   year: number;
 };
+
+function Social({ site, className }: { site: SiteContext; className?: string }) {
+  if (site.social.length === 0) return null;
+  return (
+    <ul className={cn("flex flex-wrap gap-x-4 gap-y-2", className)} aria-label="Social media">
+      {site.social.map((item) => (
+        <li key={item.href}>
+          <a
+            href={item.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-sq-fg"
+          >
+            {item.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export type SectionProps<T> = { data: T; variant: string; site: SiteContext };
 
@@ -150,6 +171,7 @@ function Footer({ data, variant, site }: SectionProps<FooterData>) {
           ))}
         </nav>
         {data.showContact && contact.length > 0 && <p>{contact.join(" · ")}</p>}
+        <Social site={site} />
       </div>
     );
   }
@@ -196,7 +218,10 @@ function Footer({ data, variant, site }: SectionProps<FooterData>) {
           </div>
         )}
       </div>
-      <p className="mt-10 border-t border-sq-border pt-6 text-sm text-sq-muted-fg">{copyright}</p>
+      <div className="mt-10 flex flex-col gap-4 border-t border-sq-border pt-6 text-sm text-sq-muted-fg sm:flex-row sm:items-center sm:justify-between">
+        <p>{copyright}</p>
+        <Social site={site} />
+      </div>
     </div>
   );
 }

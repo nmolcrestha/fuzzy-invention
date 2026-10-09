@@ -7,26 +7,34 @@ import { db } from "@/db";
 import { pages, pageSections, sections, type Site } from "@/db/schema";
 import { requireUser } from "@/lib/session";
 import type { SiteContext } from "@/sections/components";
+import { extraNavLinks, normalizeNavigation, socialLinks } from "@/sections/navigation";
 import { chromeBlock, normalizeBlock, type SectionBlock } from "@/sections/registry";
 import type { PageDocument } from "@/sections/site-page";
+import { normalizeTheme } from "@/sections/theme";
 import { findOwnedPage } from "@/server/sites/access";
 
 type PageSummary = { id: string; title: string; path: string; showInNav: boolean; isHome: boolean };
 
+/** Site context for drafts: the menu follows the current (unpublished) page list. */
 export function buildSiteContext(
-  site: Pick<Site, "name" | "settings">,
+  site: Pick<Site, "name" | "settings" | "navigation">,
   sitePages: PageSummary[],
 ): SiteContext {
+  const navigation = normalizeNavigation(site.navigation);
   return {
     siteName: site.name,
-    nav: sitePages
-      .filter((page) => page.showInNav)
-      .map((page) => ({ label: page.title, href: page.path })),
+    nav: [
+      ...sitePages
+        .filter((page) => page.showInNav)
+        .map((page) => ({ label: page.title, href: page.path })),
+      ...extraNavLinks(navigation.links),
+    ],
     contact: {
       email: site.settings.contactEmail || undefined,
       phone: site.settings.phone || undefined,
       address: site.settings.address || undefined,
     },
+    social: socialLinks(navigation.social),
     year: new Date().getFullYear(),
   };
 }
@@ -77,6 +85,7 @@ export async function loadEditor(siteId: string, pageId: string) {
     site: { id: site.id, name: site.name, subdomain: site.subdomain },
     page: { id: page.id, title: page.title, path: page.path },
     revisions: { page: page.draftRevision, design: site.designRevision },
+    theme: normalizeTheme(site.theme),
     doc,
     pages: sitePages,
     siteContext: buildSiteContext(site, sitePages),

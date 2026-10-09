@@ -17,6 +17,7 @@ import {
   ok,
   UNEXPECTED,
 } from "@/server/action-result";
+import { invalidateLiveSite } from "@/server/live-cache";
 import { findOwnedPage, findOwnedSite } from "@/server/sites/access";
 import {
   type CreatePageInput,
@@ -44,9 +45,15 @@ async function takenPaths(tx: Tx | typeof db, siteId: string, exceptPageId?: str
   return new Set(rows.map((row) => row.path));
 }
 
-/** Any change to a page means the site has something new to publish. */
-async function touchSite(tx: Tx, siteId: string) {
-  await tx.update(sites).set({ updatedAt: new Date() }).where(eq(sites.id, siteId));
+/**
+ * Records that the site changed. `menu: true` when the change affects the menu (order or which
+ * pages are in it): the live menu is part of the site design, so it needs publishing.
+ */
+async function touchSite(tx: Tx, siteId: string, { menu = false }: { menu?: boolean } = {}) {
+  await tx
+    .update(sites)
+    .set({ updatedAt: new Date(), ...(menu && { designHasUnpublishedChanges: true }) })
+    .where(eq(sites.id, siteId));
 }
 
 export async function createPage(input: CreatePageInput): Promise<ActionResult<{ page: Page }>> {
@@ -79,7 +86,7 @@ export async function createPage(input: CreatePageInput): Promise<ActionResult<{
         .values({ siteId: site.id, title, path, showInNav, position: (maxPosition ?? -1) + 1 })
         .returning();
 
-      await touchSite(tx, site.id);
+      await touchSite(tx, site.id, { menu: showInNav });
       await logActivity(tx, {
         siteId: site.id,
         userId: me.id,
@@ -219,11 +226,8 @@ export async function setPageInNav(pageId: string, showInNav: boolean): Promise<
   if (page.showInNav === showInNav) return ok();
 
   await db.transaction(async (tx) => {
-    await tx
-      .update(pages)
-      .set({ showInNav, hasUnpublishedChanges: true })
-      .where(eq(pages.id, page.id));
-    await touchSite(tx, page.siteId);
+    await tx.update(pages).set({ showInNav }).where(eq(pages.id, page.id));
+    await touchSite(tx, page.siteId, { menu: true });
     await logActivity(tx, {
       siteId: page.siteId,
       userId: me.id,
@@ -270,7 +274,7 @@ export async function reorderPages(input: {
       )}]::uuid[]) with ordinality as ordered(id, idx)
       where ${pages.id} = ordered.id and ${pages.siteId} = ${site.id}
     `);
-    await touchSite(tx, site.id);
+    await touchSite(tx, site.id, { menu: true });
     await logActivity(tx, {
       siteId: site.id,
       userId: me.id,
@@ -378,7 +382,7 @@ export async function duplicatePage(pageId: string): Promise<ActionResult<{ page
 }
 
 /** Soft-deletes a page so it can be restored with Undo. */
-export async function deletePage(pageId: string): Promise<ActionResult> {
+export async function deletePage(pageId: string): Promise<ActionResult<{ wasLive: boolean }>> {
   const me = await requireUser();
   const found = await findOwnedPage(me.id, pageId);
   if (!found) return fail(NOT_FOUND);
@@ -392,7 +396,7 @@ export async function deletePage(pageId: string): Promise<ActionResult> {
 
   await db.transaction(async (tx) => {
     await tx.update(pages).set({ deletedAt: new Date() }).where(eq(pages.id, page.id));
-    await touchSite(tx, page.siteId);
+    await touchSite(tx, page.siteId, { menu: page.showInNav });
     await logActivity(tx, {
       siteId: page.siteId,
       userId: me.id,
@@ -403,8 +407,11 @@ export async function deletePage(pageId: string): Promise<ActionResult> {
     });
   });
 
+  // A deleted page disappears from the live website right away.
+  const wasLive = page.publishedVersionId !== null;
+  if (wasLive) invalidateLiveSite(page.siteId);
   refresh();
-  return ok();
+  return ok({ wasLive });
 }
 
 /** Undo for deletePage. If the address was reused meanwhile, the page gets a new one. */
@@ -424,7 +431,7 @@ export async function restorePage(
         .update(pages)
         .set({ deletedAt: null, path: restoredPath, hasUnpublishedChanges: true })
         .where(eq(pages.id, page.id));
-      await touchSite(tx, page.siteId);
+      await touchSite(tx, page.siteId, { menu: page.showInNav });
       await logActivity(tx, {
         siteId: page.siteId,
         userId: me.id,
@@ -436,6 +443,7 @@ export async function restorePage(
       return restoredPath;
     });
 
+    if (page.publishedVersionId) invalidateLiveSite(page.siteId);
     refresh();
     return ok({ path, pathChanged: path !== page.path });
   } catch (error) {

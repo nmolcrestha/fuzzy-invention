@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   index,
   integer,
@@ -11,6 +12,9 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+
+import type { SiteNavigation } from "@/sections/navigation";
+import type { SiteTheme } from "@/sections/theme";
 
 import { user } from "./auth";
 
@@ -66,9 +70,9 @@ export const sites = pgTable(
     subdomain: text("subdomain").notNull().unique(),
     customDomain: text("custom_domain").unique(),
     templateKey: text("template_key"),
-    theme: jsonb("theme").$type<Record<string, unknown>>().notNull().default({}),
+    theme: jsonb("theme").$type<Partial<SiteTheme>>().notNull().default({}),
     settings: jsonb("settings").$type<SiteSettings>().notNull().default({}),
-    navigation: jsonb("navigation").$type<Record<string, unknown>>().notNull().default({}),
+    navigation: jsonb("navigation").$type<Partial<SiteNavigation>>().notNull().default({}),
     // Site design blocks shown on every page. Null = use the section type's defaults.
     header: jsonb("header").$type<ChromeBlock>(),
     footer: jsonb("footer").$type<ChromeBlock>(),
@@ -76,8 +80,13 @@ export const sites = pgTable(
     designRevision: integer("design_revision").notNull().default(0),
     status: siteStatus("status").notNull().default("draft"),
     designHasUnpublishedChanges: boolean("design_has_unpublished_changes").notNull().default(true),
-    // FK to site_versions is added in Phase 3 together with that table.
-    publishedVersionId: uuid("published_version_id"),
+    /** The live site design. Null until the first publish. */
+    publishedVersionId: uuid("published_version_id").references(
+      (): AnyPgColumn => siteVersions.id,
+      {
+        onDelete: "set null",
+      },
+    ),
     ...timestamps,
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
@@ -98,9 +107,16 @@ export const pages = pgTable(
     position: integer("position").notNull().default(0),
     seo: jsonb("seo").$type<PageSeo>().notNull().default({}),
     hasUnpublishedChanges: boolean("has_unpublished_changes").notNull().default(true),
-    // FK to page_versions is added in Phase 3 together with that table.
-    publishedVersionId: uuid("published_version_id"),
+    /** The live version of this page. Null = never published (or unpublished). */
+    publishedVersionId: uuid("published_version_id").references(
+      (): AnyPgColumn => pageVersions.id,
+      {
+        onDelete: "set null",
+      },
+    ),
     publishedAt: timestamp("published_at", { withTimezone: true }),
+    /** The live address, used to route visitors (the draft path may differ). */
+    publishedPath: text("published_path"),
     // Bumped on every editor save; guards against two tabs overwriting each other.
     draftRevision: integer("draft_revision").notNull().default(0),
     ...timestamps,
@@ -112,6 +128,7 @@ export const pages = pgTable(
     uniqueIndex("pages_site_path_unique")
       .on(table.siteId, table.path)
       .where(sql`${table.deletedAt} is null`),
+    index("pages_site_published_path_idx").on(table.siteId, table.publishedPath),
     // At most one homepage per site.
     uniqueIndex("pages_site_home_unique")
       .on(table.siteId)
@@ -158,6 +175,39 @@ export const pageSections = pgTable(
     index("page_sections_page_id_idx").on(table.pageId, table.position),
     uniqueIndex("page_sections_page_section_unique").on(table.pageId, table.sectionId),
   ],
+);
+
+/** Immutable snapshot of the site design (theme, header/footer, menu) at publish time. */
+export const siteVersions = pgTable(
+  "site_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    siteId: uuid("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+    publishedBy: text("published_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("site_versions_site_created_idx").on(table.siteId, table.createdAt)],
+);
+
+/** Immutable snapshot of one page (with its sections resolved) at publish time. */
+export const pageVersions = pgTable(
+  "page_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => pages.id, { onDelete: "cascade" }),
+    siteId: uuid("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+    publishedBy: text("published_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("page_versions_page_created_idx").on(table.pageId, table.createdAt)],
 );
 
 export const activityLog = pgTable(

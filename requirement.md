@@ -564,12 +564,14 @@ Templates are stored as seed JSON (same shape as a site snapshot) and are **clon
 - Autosave + status indicator, undo/redo, unsaved-changes guard
 - **Done when:** a user can build a full landing page visually and changes persist.
 
-### Phase 3 — Theme, publishing & public rendering (≈2 weeks)
+### Phase 3 — Theme, publishing & public rendering (≈2 weeks) ✅ done 2026-10-09
 
-- Theme tokens → CSS variables; presets; theme editor page
-- Navigation editor
+- Theme tokens → CSS variables; 8 presets; Design tab with live preview and contrast warning
+- Menu & social tab (extra menu links, social profiles). Menu order and membership are part of the site design, so they go live when the design is published
+- Pre-publish checks (PUB-11) and "Take offline" (PUB-7) pulled forward from later phases
+- Known limitation: a missing page shows the site-styled 404 with `noindex`, but the HTTP status is 200 because the response streams (Next.js Cache Components behavior). A real 404 status needs a fast existence check in `proxy.ts` before rendering. Planned with custom domains.
 - Page-by-page publish flow: publish dialog with the current page + other changed items, page/site-design version snapshots, per-page status badges, tag-based revalidation
-- Middleware hostname routing, `/_sites` renderer, 404s, sitemap/robots, OG tags
+- Proxy hostname routing, `/_sites` renderer, site-styled 404s, sitemap/robots, SEO/OG tags
 - **Done when:** `mysite.builder.app` serves published pages, an unpublished page returns 404, and editing a page doesn't affect the live site until that page is republished.
 
 ### Phase 4 — Templates & onboarding (≈2 weeks)

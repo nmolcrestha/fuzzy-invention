@@ -29,6 +29,13 @@
       "when": 1791561001635,
       "tag": "0003_sections_editor",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791562318459,
+      "tag": "0004_publishing",
+      "breakpoints": true
     }
   ]
 }

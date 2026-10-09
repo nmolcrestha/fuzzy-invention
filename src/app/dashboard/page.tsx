@@ -77,7 +77,10 @@ export default async function DashboardPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="relative z-10 w-fit">
-                  <SiteStatusBadge status={site.status} changedPageCount={site.changedPageCount} />
+                  <SiteStatusBadge
+                    status={site.status}
+                    changeCount={site.changedPageCount + (site.designChanged ? 1 : 0)}
+                  />
                 </CardContent>
                 <CardFooter className="justify-between text-sm text-muted-foreground">
                   <span className="flex items-center gap-1.5">

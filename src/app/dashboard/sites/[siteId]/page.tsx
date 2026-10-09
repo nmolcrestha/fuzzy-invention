@@ -19,6 +19,7 @@ export default async function SitePagesPage({ params }: PageProps<"/dashboard/si
     <PageManager
       siteId={site.id}
       subdomain={site.subdomain}
+      designChanged={site.designHasUnpublishedChanges || !site.publishedVersionId}
       pages={pages.map((page) => ({
         id: page.id,
         title: page.title,

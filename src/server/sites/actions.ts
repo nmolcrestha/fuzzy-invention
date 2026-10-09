@@ -19,6 +19,8 @@ import {
   UNEXPECTED,
 } from "@/server/action-result";
 
+import { invalidateLiveSite } from "@/server/live-cache";
+
 import { findOwnedSite } from "./access";
 import { SITE_RETENTION_DAYS } from "./queries";
 import {
@@ -138,7 +140,16 @@ export async function updateSite(input: UpdateSiteInput): Promise<ActionResult> 
     await db.transaction(async (tx) => {
       await tx
         .update(sites)
-        .set({ name, subdomain, settings: { ...site.settings, contactEmail, phone, address } })
+        .set({
+          name,
+          subdomain,
+          settings: { ...site.settings, contactEmail, phone, address },
+          // Name and contact details are part of the published site design.
+          ...((name !== site.name ||
+            contactEmail !== (site.settings.contactEmail ?? "") ||
+            phone !== (site.settings.phone ?? "") ||
+            address !== (site.settings.address ?? "")) && { designHasUnpublishedChanges: true }),
+        })
         .where(eq(sites.id, site.id));
 
       const changed = [
@@ -170,6 +181,8 @@ export async function updateSite(input: UpdateSiteInput): Promise<ActionResult> 
     return fail(UNEXPECTED);
   }
 
+  // The web address changes immediately for visitors.
+  if (subdomain !== site.subdomain) invalidateLiveSite(site.id, [site.subdomain, subdomain]);
   refresh();
   return ok();
 }
@@ -192,6 +205,7 @@ export async function deleteSite(siteId: string): Promise<ActionResult> {
     });
   });
 
+  invalidateLiveSite(site.id, [site.subdomain]);
   refresh();
   return ok();
 }
@@ -217,6 +231,7 @@ export async function restoreSite(siteId: string): Promise<ActionResult> {
     });
   });
 
+  invalidateLiveSite(site.id, [site.subdomain]);
   refresh();
   return ok();
 }
