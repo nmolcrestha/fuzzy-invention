@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { pages, type Page, pageSections, sections, sites } from "@/db/schema";
 import { requireUser } from "@/lib/session";
 import { pathFromTitle, uniqueVariant } from "@/lib/slug";
+import { cleanSeo, sameSeo } from "@/sections/seo";
 import { logActivity } from "@/server/activity";
 import {
   type ActionResult,
@@ -117,6 +118,7 @@ export async function updatePage(input: UpdatePageInput): Promise<ActionResult> 
   const found = await findOwnedPage(me.id, pageId);
   if (!found) return fail(NOT_FOUND);
   const { page } = found;
+  const seo = parsed.data.seo ? cleanSeo(parsed.data.seo) : page.seo;
 
   if (page.isHome && path !== "/") {
     return fail(
@@ -131,27 +133,40 @@ export async function updatePage(input: UpdatePageInput): Promise<ActionResult> 
       path: "“/” is reserved for the homepage.",
     });
   }
-  if (title === page.title && path === page.path) return ok();
+  const seoChanged = !sameSeo(seo, page.seo);
+  if (title === page.title && path === page.path && !seoChanged) return ok();
 
   try {
     await db.transaction(async (tx) => {
       await tx
         .update(pages)
-        .set({ title, path, hasUnpublishedChanges: true })
+        .set({ title, path, seo, hasUnpublishedChanges: true })
         .where(eq(pages.id, page.id));
       await touchSite(tx, page.siteId);
-      await logActivity(tx, {
-        siteId: page.siteId,
-        userId: me.id,
-        action: "page.updated",
-        entityType: "page",
-        entityId: page.id,
-        metadata: {
-          title,
-          ...(title !== page.title && { fromTitle: page.title }),
-          ...(path !== page.path && { fromPath: page.path, toPath: path }),
-        },
-      });
+      if (title !== page.title || path !== page.path) {
+        await logActivity(tx, {
+          siteId: page.siteId,
+          userId: me.id,
+          action: "page.updated",
+          entityType: "page",
+          entityId: page.id,
+          metadata: {
+            title,
+            ...(title !== page.title && { fromTitle: page.title }),
+            ...(path !== page.path && { fromPath: page.path, toPath: path }),
+          },
+        });
+      }
+      if (seoChanged) {
+        await logActivity(tx, {
+          siteId: page.siteId,
+          userId: me.id,
+          action: "page.seo_changed",
+          entityType: "page",
+          entityId: page.id,
+          metadata: { title },
+        });
+      }
     });
   } catch (error) {
     if (isUniqueViolation(error)) return fail(PATH_TAKEN, { path: PATH_TAKEN });

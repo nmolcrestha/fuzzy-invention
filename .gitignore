@@ -20,6 +20,9 @@
 # production
 /build
 
+# local uploads (used when BLOB_READ_WRITE_TOKEN isn't set)
+/.data/
+
 # misc
 .DS_Store
 *.pem
@@ -40,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/e2e/.auth/
+/test-results/
+/playwright-report/

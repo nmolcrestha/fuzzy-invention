@@ -26,6 +26,7 @@ import {
   videoSection,
 } from "./defs-more";
 import { dataSchema, defaults } from "./fields";
+import { formSection } from "./form";
 import type { SectionDefinition } from "./types";
 
 // Order here is the order in the section picker (within each category).
@@ -46,6 +47,7 @@ const ALL: SectionDefinition[] = [
   faqSection,
   gallerySection,
   videoSection,
+  formSection,
   contactSection,
   hoursSection,
   menuSection,

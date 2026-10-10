@@ -25,10 +25,13 @@ import {
   GlobeIcon,
   GripVerticalIcon,
   LayersIcon,
+  Link2Icon,
+  Link2OffIcon,
   MoreHorizontalIcon,
   PanelBottomIcon,
   PanelTopIcon,
   PlusIcon,
+  BookmarkPlusIcon,
   Trash2Icon,
 } from "lucide-react";
 
@@ -46,6 +49,7 @@ import { cn } from "@/lib/utils";
 import type { Field } from "@/sections/fields";
 import { getSectionDef, type SectionBlock } from "@/sections/registry";
 
+import { useEditorActions } from "./editor-meta";
 import { useEditor, useEditorStore } from "./store";
 import { useSectionActions } from "./use-section-actions";
 
@@ -196,7 +200,9 @@ function SortableRow({
   const selected = useEditor((state) => state.selectedId === block.id);
   const hovered = useEditor((state) => state.hoveredId === block.id);
   const hover = useEditor((state) => state.hover);
+  const shared = useEditor((state) => state.shared[block.id]);
   const actions = useSectionActions();
+  const { saveForReuse } = useEditorActions();
   const {
     attributes,
     listeners,
@@ -241,6 +247,12 @@ function SortableRow({
       >
         <span className="flex items-center gap-1.5 text-sm font-medium">
           {name}
+          {shared && (
+            <span className="inline-flex items-center gap-0.5 rounded bg-sky-100 px-1 text-[11px] font-medium text-sky-900 dark:bg-sky-950 dark:text-sky-200">
+              <Link2Icon className="size-3" aria-hidden />
+              Shared
+            </span>
+          )}
           {block.isHidden && (
             <EyeOffIcon className="size-3.5 text-muted-foreground" aria-label="Hidden" />
           )}
@@ -294,6 +306,17 @@ function SortableRow({
             {block.isHidden ? <EyeIcon aria-hidden /> : <EyeOffIcon aria-hidden />}
             {block.isHidden ? "Show to visitors" : "Hide from visitors"}
           </DropdownMenuItem>
+          {shared ? (
+            <DropdownMenuItem onClick={() => actions.detach(block.id)}>
+              <Link2OffIcon aria-hidden />
+              Detach (edit only here)
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={() => saveForReuse(block.id)}>
+              <BookmarkPlusIcon aria-hidden />
+              Save for reuse…
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onClick={() => actions.remove(block.id)}>
             <Trash2Icon aria-hidden />

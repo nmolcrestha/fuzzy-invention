@@ -1,7 +1,7 @@
 # Site Builder — Requirements & Plan
 
 > Working name: **Side Quest Builder** (rename anytime)
-> Status: Draft v0.2 · Last updated: 2026-10-09
+> Status: Draft v0.2 · Last updated: 2026-10-10
 
 ---
 
@@ -585,14 +585,38 @@ Templates are stored as seed JSON (same shape as a site snapshot) and are **clon
 - Onboarding wizard + getting-started checklist
 - **Done when:** a new user reaches a published, good-looking site in under 10 minutes.
 
-### Phase 5 — Media, SEO, forms, library (≈2 weeks)
+### Phase 5 — Media, SEO, forms, library (≈2 weeks) ✅ done 2026-10-10
 
 - Media library + Vercel Blob client uploads (`handleUpload` route), alt text, in-use warnings
+  - Media tab with drag & drop, paste and progress; a single upload asks for a description right away
+  - Image picker in every image field (library, upload, or paste a link)
+  - Without `BLOB_READ_WRITE_TOKEN`, uploads go to `.data/uploads` (development). Files are sniffed by their bytes; SVGs are served with a sandboxing CSP
+  - Deleting an image lists where it's used and removes it from those drafts. The file is kept while a published version still uses it. A cleanup job for those files is still to do
 - Per-page SEO panel, URL change → redirect
+  - "Search & social" tab in page settings (from the Pages tab and the editor): title, description, social image, hide from search engines, with a Google preview
+  - Publishing a moved page offers to forward the old address; "Take offline" can forward to the homepage; forwarded addresses are listed in Settings
+  - Site logo, browser-tab icon and default social image (SITE-3), published with the site design
+  - Known limitation: like 404s, redirects inside the streamed page are client-side (meta refresh), not HTTP 308. Fixed together with the 404 status in the proxy (Phase 6)
 - Contact form section, submissions inbox, email notifications, spam protection
+  - Configurable fields (short text, email, phone, long text; required or optional). Works without JavaScript
+  - Only forms on published pages accept messages, validated against the published version. Honeypot plus rate limits (5 per sender per 10 minutes, 100 per site per hour)
+  - Messages tab with unread count, reply by email, mark read/unread, delete, CSV export (FRM-5). Email to the owner on each message (can be turned off)
+  - Added to the Studio (company) template's contact page
 - Saved/shared sections (link vs copy, "used on N pages", detach)
+  - Save for reuse from the outline or the settings panel. "Saved sections" in the section picker with Link or Copy
+  - Shared badge, notice naming the other pages, Detach. Editing marks the other pages as changed, and the publish dialog pre-selects them (SEC-8a)
+  - Section revisions stop an edit from one page silently overwriting an edit made from another
 - Version history + restore, discard changes, pre-publish checks
+  - History tab per page and for the site design: who, when and an optional note (asked in the publish dialog). View an earlier page version, restore it to the draft, or discard unpublished changes
+  - The last 50 versions are kept per page and for the site design
+  - Pre-publish checks now include search title/description length and hidden-from-search pages
+- End-to-end tests are committed (`e2e/`, Playwright) and run in CI
 - **Done when:** all P0 + P1 requirements are met → **MVP launch** 🚀
+- **Still open before MVP launch** (from earlier phases' requirements, not in this phase's list):
+  - PAGE-1 (P0): create a page from a page template (About, Contact, Menu, Pricing…). Today new pages start blank
+  - SITE-4 (P1) duplicate site · AUTH-5 (P1) profile settings and delete account · ED-9 (P1) shareable, expiring preview links
+  - Offline backup of unsaved edits in IndexedDB (non-functional requirement) · RND-6 (P1) Lighthouse audit of the templates
+  - Vercel Blob uploads are built but only tested with local storage (no token yet)
 
 ### Phase 6 — Post-MVP
 

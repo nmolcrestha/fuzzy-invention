@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { LivePage } from "@/components/live/live-site";
 import { normalizeLivePath } from "@/lib/hosts";
 import { siteUrl } from "@/lib/site-url";
-import { plainText } from "@/sections/rich-text";
+import { autoDescription, seoTitle } from "@/sections/seo";
 import type { PageSnapshot } from "@/sections/snapshot";
-import { getLivePage, getLiveSite, type LiveSite } from "@/server/live/queries";
+import { getLivePage, getLiveRedirect, getLiveSite, type LiveSite } from "@/server/live/queries";
 
 type Props = PageProps<"/_sites/[subdomain]/[[...path]]">;
 
@@ -24,43 +24,47 @@ async function resolve(
   return { site, page: await getLivePage(site.id, toPath(path)) };
 }
 
-/** A short description from the page's first text, used when no SEO description is set. */
-function autoDescription(page: PageSnapshot): string | undefined {
-  for (const block of page.sections) {
-    for (const value of Object.values(block.data)) {
-      const text =
-        typeof value === "string"
-          ? value
-          : value && typeof value === "object" && (value as { type?: string }).type === "doc"
-            ? plainText(value as Parameters<typeof plainText>[0])
-            : "";
-      if (text.trim().length > 40) return text.trim().slice(0, 160);
-    }
-  }
-  return undefined;
-}
-
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const { site, page } = await resolve(props);
   if (!site) return { title: "Website not available", robots: { index: false } };
   const name = site.snapshot.name;
   if (!page) return { title: { absolute: `Page not found · ${name}` }, robots: { index: false } };
 
-  const title = page.seo.title?.trim() || (page.isHome ? name : `${page.title} · ${name}`);
-  const description = page.seo.description?.trim() || autoDescription(page);
+  const title = seoTitle(page, name);
+  const description = page.seo.description?.trim() || autoDescription(page.sections);
   const url = siteUrl(site.subdomain, page.path);
+  const image = page.seo.image || site.snapshot.branding.socialImage;
+  const favicon = site.snapshot.branding.favicon;
   return {
     title: { absolute: title },
     description,
     alternates: { canonical: url },
-    openGraph: { title, description, url, siteName: name, type: "website" },
-    twitter: { card: "summary_large_image", title, description },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: name,
+      type: "website",
+      ...(image && { images: [{ url: image }] }),
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(image && { images: [image] }),
+    },
     robots: page.seo.noindex ? { index: false, follow: true } : undefined,
+    ...(favicon && { icons: { icon: favicon } }),
   };
 }
 
 async function Content(props: Props) {
   const { site, page } = await resolve(props);
+  if (site && !page) {
+    // An old address of a page that moved: forward visitors to where it lives now.
+    const target = await getLiveRedirect(site.id, toPath((await props.params).path));
+    if (target) permanentRedirect(target);
+  }
   if (!site || !page) notFound();
   return <LivePage site={site} page={page} />;
 }

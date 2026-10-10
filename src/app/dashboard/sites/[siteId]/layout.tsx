@@ -5,6 +5,7 @@ import { SiteStatusBadge } from "@/components/sites/status-badge";
 import { SiteTabs } from "@/components/sites/site-tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { siteHost, siteUrl } from "@/lib/site-url";
+import { countUnread } from "@/server/forms/queries";
 import { getMySiteOr404, listPages } from "@/server/sites/queries";
 
 export default async function SiteLayout({
@@ -13,6 +14,7 @@ export default async function SiteLayout({
 }: LayoutProps<"/dashboard/sites/[siteId]">) {
   const { siteId } = await params;
   const [site, sitePages] = await Promise.all([getMySiteOr404(siteId), listPages(siteId)]);
+  const unread = await countUnread(site.id);
   const changeCount =
     sitePages.filter((page) => !page.publishedVersionId || page.hasUnpublishedChanges).length +
     (site.designHasUnpublishedChanges ? 1 : 0);
@@ -54,7 +56,7 @@ export default async function SiteLayout({
           </Tooltip>
         )}
       </div>
-      <SiteTabs siteId={site.id} />
+      <SiteTabs siteId={site.id} unread={unread} />
       {children}
     </div>
   );

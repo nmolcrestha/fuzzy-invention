@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
@@ -25,6 +25,8 @@ const blockInput = z.object({
   data: z.unknown(),
   style: z.unknown().optional(),
   isHidden: z.boolean().optional(),
+  /** Set for shared sections: the revision the editor started from, and whether it was edited. */
+  shared: z.object({ revision: z.number().int(), dirty: z.boolean() }).optional(),
 });
 
 const chromeInput = z.object({
@@ -55,6 +57,14 @@ const CONFLICT: ActionFailure = {
 const EDIT_LOG_WINDOW_MS = 30 * 60 * 1000;
 
 class Conflict extends Error {}
+class SharedConflict extends Error {}
+
+const SHARED_CONFLICT: ActionFailure = {
+  ok: false,
+  code: "conflict",
+  error:
+    "A shared section on this page was just changed from another page. Reload to get the latest version before editing it.",
+};
 class Invalid extends Error {}
 
 /**
@@ -62,9 +72,14 @@ class Invalid extends Error {}
  * header & footer. Each part is guarded by a revision number so two tabs can't silently
  * overwrite each other.
  */
-export async function saveDraft(
-  input: SaveDraftInput,
-): Promise<ActionResult<{ pageRevision: number | null; designRevision: number | null }>> {
+export async function saveDraft(input: SaveDraftInput): Promise<
+  ActionResult<{
+    pageRevision: number | null;
+    designRevision: number | null;
+    /** New revisions of shared sections whose content was saved. */
+    sharedRevisions: Record<string, number>;
+  }>
+> {
   const me = await requireUser();
   const parsed = saveDraftInput.safeParse(input);
   if (!parsed.success) return fail(UNEXPECTED);
@@ -97,6 +112,7 @@ export async function saveDraft(
     const result = await db.transaction(async (tx) => {
       let pageRevision: number | null = null;
       let designRevision: number | null = null;
+      const sharedRevisions: Record<string, number> = {};
 
       if (pageInput) {
         const [updated] = await tx
@@ -114,15 +130,70 @@ export async function saveDraft(
           .where(eq(pageSections.pageId, page.id));
         const placedIds = new Set(placed.map((row) => row.sectionId));
 
-        // An id must be new, or already on this page. Never let a save touch another page's
-        // (or another site's) section by guessing its id.
-        if (incomingIds.length > 0) {
-          const existing = await tx
-            .select({ id: sections.id })
-            .from(sections)
-            .where(inArray(sections.id, incomingIds));
-          if (existing.some((row) => !placedIds.has(row.id))) throw new Invalid();
+        // An id must be new, already on this page, or one of this site's saved sections (linked
+        // from the library). Never let a save touch another page's or site's section by its id.
+        const existing =
+          incomingIds.length > 0
+            ? await tx
+                .select({
+                  id: sections.id,
+                  siteId: sections.siteId,
+                  isShared: sections.isShared,
+                  revision: sections.revision,
+                })
+                .from(sections)
+                .where(inArray(sections.id, incomingIds))
+            : [];
+        if (
+          existing.some(
+            (row) => row.siteId !== site.id || (!placedIds.has(row.id) && !row.isShared),
+          )
+        ) {
+          throw new Invalid();
         }
+        const sharedRows = new Map(
+          existing.filter((row) => row.isShared).map((row) => [row.id, row]),
+        );
+        const sharedInput = new Map(
+          pageInput.sections.flatMap((block) => (block.shared ? [[block.id, block.shared]] : [])),
+        );
+
+        // Shared sections: only content edited here is written, and only if nobody saved a newer
+        // version from another page in the meantime. Every other page using it now has changes.
+        for (const block of blocks) {
+          const row = sharedRows.get(block.id);
+          const meta = sharedInput.get(block.id);
+          if (!row || !meta?.dirty) continue;
+          if (meta.revision !== row.revision) throw new SharedConflict();
+          const [updated] = await tx
+            .update(sections)
+            .set({
+              variant: block.variant,
+              schemaVersion: block.schemaVersion,
+              data: block.data,
+              style: block.style,
+              revision: sql`${sections.revision} + 1`,
+            })
+            .where(eq(sections.id, block.id))
+            .returning({ revision: sections.revision });
+          sharedRevisions[block.id] = updated!.revision;
+          await tx
+            .update(pages)
+            .set({ hasUnpublishedChanges: true })
+            .where(
+              and(
+                ne(pages.id, page.id),
+                inArray(
+                  pages.id,
+                  tx
+                    .select({ id: pageSections.pageId })
+                    .from(pageSections)
+                    .where(eq(pageSections.sectionId, block.id)),
+                ),
+              ),
+            );
+        }
+        const localBlocks = blocks.filter((block) => !sharedRows.has(block.id));
 
         const removed = [...placedIds].filter((id) => !incomingIds.includes(id));
         await tx.delete(pageSections).where(eq(pageSections.pageId, page.id));
@@ -132,11 +203,11 @@ export async function saveDraft(
             .where(and(inArray(sections.id, removed), eq(sections.isShared, false)));
         }
 
-        if (blocks.length > 0) {
+        if (localBlocks.length > 0) {
           await tx
             .insert(sections)
             .values(
-              blocks.map((block) => ({
+              localBlocks.map((block) => ({
                 id: block.id,
                 siteId: site.id,
                 type: block.type,
@@ -155,10 +226,12 @@ export async function saveDraft(
                 style: sql`excluded.style`,
                 updatedAt: new Date(),
               },
-              // Belt and braces: never update a row that belongs to another site.
-              setWhere: eq(sections.siteId, site.id),
+              // Belt and braces: never update another site's row (or a shared one, see above).
+              setWhere: and(eq(sections.siteId, site.id), eq(sections.isShared, false)),
             });
+        }
 
+        if (blocks.length > 0) {
           await tx.insert(pageSections).values(
             blocks.map((block, position) => ({
               pageId: page.id,
@@ -210,12 +283,13 @@ export async function saveDraft(
         await tx.update(sites).set({ updatedAt: new Date() }).where(eq(sites.id, site.id));
       }
 
-      return { pageRevision, designRevision };
+      return { pageRevision, designRevision, sharedRevisions };
     });
 
     return ok(result);
   } catch (error) {
     if (error instanceof Conflict) return CONFLICT;
+    if (error instanceof SharedConflict) return SHARED_CONFLICT;
     if (error instanceof Invalid) return fail(UNEXPECTED);
     console.error("saveDraft failed", error);
     return fail(UNEXPECTED);

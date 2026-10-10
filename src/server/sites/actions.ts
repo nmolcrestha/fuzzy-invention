@@ -29,6 +29,8 @@ import { SITE_RETENTION_DAYS } from "./queries";
 import {
   type CreateSiteInput,
   createSiteSchema,
+  type UpdateBrandingInput,
+  updateBrandingSchema,
   type UpdateSiteInput,
   updateSiteSchema,
 } from "./schemas";
@@ -219,6 +221,51 @@ export async function updateSite(input: UpdateSiteInput): Promise<ActionResult> 
 
   // The web address changes immediately for visitors.
   if (subdomain !== site.subdomain) invalidateLiveSite(site.id, [site.subdomain, subdomain]);
+  refresh();
+  return ok();
+}
+
+/** Logo, browser-tab icon and default social image. Part of the site design, so they need publishing. */
+export async function updateBranding(input: UpdateBrandingInput): Promise<ActionResult> {
+  const me = await requireUser();
+  const parsed = updateBrandingSchema.safeParse(input);
+  if (!parsed.success) return fromZodError(parsed.error);
+  const { siteId, logo, favicon, socialImage } = parsed.data;
+
+  const site = await findOwnedSite(me.id, siteId);
+  if (!site) return fail(NOT_FOUND);
+
+  const current = site.settings;
+  const changed = [
+    (logo.src !== (current.logo?.src ?? "") || logo.alt !== (current.logo?.alt ?? "")) && "logo",
+    favicon !== (current.favicon ?? "") && "browser tab icon",
+    socialImage !== (current.socialImage ?? "") && "social media image",
+  ].filter((item): item is string => Boolean(item));
+  if (changed.length === 0) return ok();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(sites)
+      .set({
+        settings: {
+          ...current,
+          logo: logo.src ? logo : undefined,
+          favicon: favicon || undefined,
+          socialImage: socialImage || undefined,
+        },
+        designHasUnpublishedChanges: true,
+      })
+      .where(eq(sites.id, site.id));
+    await logActivity(tx, {
+      siteId: site.id,
+      userId: me.id,
+      action: "site.updated",
+      entityType: "site",
+      entityId: site.id,
+      metadata: { changed },
+    });
+  });
+
   refresh();
   return ok();
 }

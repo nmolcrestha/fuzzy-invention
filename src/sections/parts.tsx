@@ -10,6 +10,10 @@ export type SiteContext = {
   contact: { email?: string; phone?: string; address?: string };
   social: { label: string; href: string }[];
   year: number;
+  /** Uploaded logo; without one, the header shows the site name's first letter. */
+  logo?: ImageValue;
+  /** True on the published site (forms send messages); false in previews. */
+  live?: boolean;
 };
 
 export function Social({ site, className }: { site: SiteContext; className?: string }) {

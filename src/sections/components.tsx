@@ -15,6 +15,7 @@ import type {
 } from "./defs";
 import { ICONS } from "./icon-map";
 import { MORE_SECTION_COMPONENTS } from "./components-more";
+import { ContactForm } from "./form-view";
 import { richTextIsEmpty } from "./rich-text";
 import { RichTextView } from "./rich-text-view";
 import { container, SectionHeading, type SectionProps, Social, SqImage, SqLink } from "./parts";
@@ -26,9 +27,17 @@ export type { SectionProps, SiteContext } from "./parts";
 function Header({ data, variant, site }: SectionProps<HeaderData>) {
   const logo = (
     <a href="/" className="flex items-center gap-2 text-lg font-bold">
-      <span className="flex size-8 items-center justify-center rounded-sq bg-sq-primary text-sm text-sq-primary-fg">
-        {site.siteName.slice(0, 1).toUpperCase()}
-      </span>
+      {site.logo?.src ? (
+        <img
+          src={site.logo.src}
+          alt={data.showSiteName ? "" : site.logo.alt || site.siteName}
+          className="h-9 w-auto max-w-44 object-contain"
+        />
+      ) : (
+        <span className="flex size-8 items-center justify-center rounded-sq bg-sq-primary text-sm text-sq-primary-fg">
+          {site.siteName.slice(0, 1).toUpperCase()}
+        </span>
+      )}
       {data.showSiteName && <span>{site.siteName}</span>}
     </a>
   );
@@ -316,6 +325,7 @@ function Text({ data, variant }: SectionProps<TextData>) {
 export const SECTION_COMPONENTS: Record<string, ComponentType<SectionProps<any>>> = {
   header: Header,
   footer: Footer,
+  form: ContactForm,
   hero: Hero,
   features: Features,
   cta: Cta,

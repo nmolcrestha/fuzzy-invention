@@ -35,11 +35,14 @@ export function SiteSettingsForm({
   initial,
   isPublished,
   retentionDays,
+  children,
 }: {
   siteId: string;
   initial: SiteSettingsValues;
   isPublished: boolean;
   retentionDays: number;
+  /** More settings cards, shown before "Delete website". */
+  children?: React.ReactNode;
 }) {
   const router = useRouter();
   const [values, setValues] = useState(initial);
@@ -187,6 +190,8 @@ export function SiteSettingsForm({
           </CardFooter>
         </Card>
       </form>
+
+      {children}
 
       <Card className="ring-destructive/30">
         <CardHeader>

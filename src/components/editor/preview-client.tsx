@@ -19,6 +19,7 @@ export function PreviewClient({
   embedded,
   selectable,
   sectionNames,
+  banner = "Draft preview. Only you can see this. Links to other pages work once they're published.",
 }: {
   initialDoc: PageDocument;
   initialTheme: SiteTheme;
@@ -28,6 +29,8 @@ export function PreviewClient({
   /** Clicking selects sections (editor). Off for the Design tab, which only shows the page. */
   selectable: boolean;
   sectionNames: Record<string, string>;
+  /** Shown above a standalone preview. */
+  banner?: string;
 }) {
   const [doc, setDoc] = useState(initialDoc);
   const [theme, setTheme] = useState(initialTheme);
@@ -132,8 +135,7 @@ export function PreviewClient({
       )}
       {!embedded && (
         <div className="sticky top-0 z-50 bg-amber-100 px-4 py-2 text-center text-sm text-amber-900">
-          Draft preview. Only you can see this. Links to other pages work once they&apos;re
-          published.
+          {banner}
         </div>
       )}
       <SitePage doc={doc} site={site} theme={theme} />

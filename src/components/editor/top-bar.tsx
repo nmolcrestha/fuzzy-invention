@@ -6,16 +6,20 @@ import {
   ChevronDownIcon,
   ExternalLinkIcon,
   GlobeIcon,
+  HistoryIcon,
   HomeIcon,
   LayersIcon,
   MonitorIcon,
   Redo2Icon,
   SettingsIcon,
+  SlidersHorizontalIcon,
   SmartphoneIcon,
   TabletIcon,
   Undo2Icon,
 } from "lucide-react";
+import { useState } from "react";
 
+import { PageFormDialog } from "@/components/pages/page-form-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,6 +27,7 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -78,6 +83,7 @@ export function TopBar({
   const canRedo = useEditor((state) => state.future.length > 0);
   const undo = useEditor((state) => state.undo);
   const redo = useEditor((state) => state.redo);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-2 sm:px-3">
@@ -110,8 +116,27 @@ export function TopBar({
               </DropdownMenuItem>
             ))}
           </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+            <SlidersHorizontalIcon aria-hidden />
+            Page settings, search &amp; social
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => onNavigate(`/dashboard/sites/${site.id}/history?item=${page.id}`)}
+          >
+            <HistoryIcon aria-hidden />
+            Version history
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <PageFormDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        siteId={site.id}
+        siteName={site.name}
+        subdomain={site.subdomain}
+        page={page}
+      />
 
       <div
         className="mx-auto hidden items-center gap-0.5 rounded-lg bg-muted p-0.5 md:flex"

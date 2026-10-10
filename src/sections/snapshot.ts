@@ -2,6 +2,8 @@
 // rendering after section or theme schemas evolve.
 import type { PageSeo } from "@/db/schema";
 
+import type { ImageValue } from "./fields";
+
 import { normalizeNavigation, type SiteNavigation } from "./navigation";
 import { chromeBlock, normalizeBlock, type SectionBlock } from "./registry";
 import { normalizeTheme, type SiteTheme } from "./theme";
@@ -14,6 +16,7 @@ export type SiteSnapshot = {
   /** Menu: page ids in order (only pages that are live are shown), plus extra links. */
   navigation: SiteNavigation & { pageIds: string[] };
   contact: { email?: string; phone?: string; address?: string };
+  branding: { logo?: ImageValue; favicon?: string; socialImage?: string };
 };
 
 export type PageSnapshot = {
@@ -28,6 +31,10 @@ export type PageSnapshot = {
 export function parseSiteSnapshot(raw: Record<string, unknown>): SiteSnapshot {
   const navigation = (raw.navigation ?? {}) as Record<string, unknown>;
   const contact = (raw.contact ?? {}) as SiteSnapshot["contact"];
+  const branding = (raw.branding ?? {}) as Record<string, unknown>;
+  const logo = branding.logo as Partial<ImageValue> | undefined;
+  const url = (value: unknown) =>
+    typeof value === "string" && /^https?:\/\//.test(value) ? value : undefined;
   return {
     name: String(raw.name ?? ""),
     theme: normalizeTheme(raw.theme),
@@ -43,6 +50,11 @@ export function parseSiteSnapshot(raw: Record<string, unknown>): SiteSnapshot {
       email: typeof contact.email === "string" ? contact.email : undefined,
       phone: typeof contact.phone === "string" ? contact.phone : undefined,
       address: typeof contact.address === "string" ? contact.address : undefined,
+    },
+    branding: {
+      logo: url(logo?.src) ? { src: logo!.src!, alt: String(logo?.alt ?? "") } : undefined,
+      favicon: url(branding.favicon),
+      socialImage: url(branding.socialImage),
     },
   };
 }

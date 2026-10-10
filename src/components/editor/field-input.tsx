@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useId, useState } from "react";
 
+import { ImagePickerField } from "@/components/media/image-picker-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -161,11 +162,11 @@ function Control({
       return <IconPicker id={id} value={value as IconName} onChange={(icon) => onChange(icon)} />;
 
     case "image":
-      // Keyed by src so undo/redo resets the draft text.
       return (
         <ImageInput
-          key={(value as ImageValue).src}
           id={id}
+          helpId={helpId}
+          label={field.label}
           value={value as ImageValue}
           onChange={onChange}
         />
@@ -240,64 +241,28 @@ function IconPicker({
 
 function ImageInput({
   id,
+  helpId,
+  label,
   value,
   onChange,
 }: {
   id: string;
+  helpId: string;
+  label: string;
   value: ImageValue;
   onChange: FieldChange;
 }) {
-  const [draft, setDraft] = useState(value.src);
-  const [error, setError] = useState<string | null>(null);
-  const altId = `${id}-alt`;
-
-  function commit(src: string) {
-    const trimmed = src.trim();
-    if (trimmed && !/^https?:\/\/\S+$/i.test(trimmed)) {
-      setError("Paste an image address that starts with https://");
-      return;
-    }
-    setError(null);
-    onChange({ ...value, src: trimmed });
-  }
-
+  const { site } = useEditorMeta();
   return (
-    <div className="grid gap-2">
-      {value.src && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={value.src}
-          alt=""
-          className="aspect-video w-full rounded-lg border object-cover"
-        />
-      )}
-      <Input
-        id={id}
-        value={draft}
-        placeholder="https://…"
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={() => commit(draft)}
-        onKeyDown={(event) => event.key === "Enter" && commit(draft)}
-        aria-invalid={Boolean(error) || undefined}
-      />
-      {error ? (
-        <p className="text-xs text-destructive">{error}</p>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          Paste an image address for now. Uploading from your computer is coming soon.
-        </p>
-      )}
-      <Label htmlFor={altId} className="text-xs">
-        Describe the image (for screen readers and Google)
-      </Label>
-      <Input
-        id={altId}
-        value={value.alt}
-        maxLength={200}
-        placeholder="e.g. Our team at the office"
-        onChange={(event) => onChange({ ...value, alt: event.target.value }, { coalesce: true })}
-      />
-    </div>
+    <ImagePickerField
+      id={id}
+      siteId={site.id}
+      value={value}
+      describedBy={helpId}
+      label={label}
+      onChange={(next) => onChange(next)}
+      onAltChange={(alt) => onChange({ ...value, alt }, { coalesce: true })}
+    />
   );
 }
 

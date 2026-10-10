@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2Icon } from "lucide-react";
-import { type ReactElement, useId, useState } from "react";
+import { type ReactElement, type ReactNode, useId, useState } from "react";
 
 import {
   AlertDialog,
@@ -30,6 +30,8 @@ type ConfirmDialogProps = {
   tone?: "default" | "destructive";
   /** When set, the user must type this text exactly before confirming (for irreversible actions). */
   confirmText?: string;
+  /** Extra options shown above the buttons (e.g. a checkbox). */
+  children?: ReactNode;
   onConfirm: () => Promise<void> | void;
 };
 
@@ -46,6 +48,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   tone = "default",
   confirmText,
+  children,
   onConfirm,
 }: ConfirmDialogProps) {
   const [open, setOpen] = useState(false);
@@ -110,6 +113,8 @@ export function ConfirmDialog({
             />
           </div>
         )}
+
+        {children}
 
         {error && (
           <p role="alert" className="text-sm text-destructive">

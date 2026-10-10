@@ -22,25 +22,67 @@ import { EditorActionsContext, EditorMetaContext } from "./editor-meta";
 import { Inspector } from "./inspector";
 import { Outline } from "./outline";
 import { PreviewFrame } from "./preview-frame";
+import { SaveSectionDialog } from "./save-section-dialog";
 import { SaveStatus } from "./save-status";
 import { SectionPicker } from "./section-picker";
-import { createEditorStore, EditorStoreContext, type EditorStore, useEditor } from "./store";
+import {
+  createEditorStore,
+  EditorStoreContext,
+  type EditorStore,
+  unsavedParts,
+  useEditor,
+} from "./store";
 import { TopBar } from "./top-bar";
 import { useAutosave } from "./use-autosave";
 import { useSectionActions } from "./use-section-actions";
 
+/** True when the server has a newer draft than the store (changed from another page or tab). */
+function serverIsNewer(data: EditorData, state: ReturnType<EditorStore["getState"]>) {
+  if (data.revisions.page > state.revisions.page) return true;
+  if (data.revisions.design > state.revisions.design) return true;
+  return Object.entries(state.shared).some(
+    ([id, entry]) => (data.shared[id]?.revision ?? entry.revision) > entry.revision,
+  );
+}
+
 export function Editor({ data }: { data: EditorData }) {
-  // One store per page; the route remounts this component when the page changes.
-  const [store] = useState(() => createEditorStore({ doc: data.doc, revisions: data.revisions }));
+  // Next keeps visited routes alive, so coming back to a page can revive an old editor whose
+  // store predates changes made elsewhere (a shared section edited on another page, a restored
+  // version). Start over from the fresh data then, unless there's unsaved work.
+  const [instance, setInstance] = useState(() => ({ data, store: createStoreFor(data) }));
+  if (data !== instance.data) {
+    const state = instance.store.getState();
+    const unsaved = unsavedParts(state);
+    setInstance(
+      serverIsNewer(data, state) && !unsaved.page && !unsaved.design
+        ? { data, store: createStoreFor(data) }
+        : { data, store: instance.store },
+    );
+  }
+  const { store } = instance;
   const meta = { site: data.site, page: data.page, pages: data.pages, checklist: data.checklist };
 
   return (
     <EditorMetaContext value={meta}>
       <EditorStoreContext value={store}>
-        <EditorShell data={data} store={store} />
+        {/* Keyed by store: hooks bound to it (autosave, shortcuts) start over with it. */}
+        <EditorShell key={storeIds.get(store)} data={data} store={store} />
       </EditorStoreContext>
     </EditorMetaContext>
   );
+}
+
+const storeIds = new WeakMap<EditorStore, number>();
+let nextStoreId = 0;
+
+function createStoreFor(data: EditorData): EditorStore {
+  const store = createEditorStore({
+    doc: data.doc,
+    revisions: data.revisions,
+    shared: data.shared,
+  });
+  storeIds.set(store, nextStoreId++);
+  return store;
 }
 
 function EditorShell({ data, store }: { data: EditorData; store: EditorStore }) {
@@ -53,6 +95,11 @@ function EditorShell({ data, store }: { data: EditorData; store: EditorStore }) 
   const [leaveTo, setLeaveTo] = useState<string | null>(null);
   const [panel, setPanel] = useState<"sections" | "settings" | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [saveBlockId, setSaveBlockId] = useState<string | null>(null);
+  const saveBlock = useEditor((state) =>
+    saveBlockId ? (state.doc.sections.find((block) => block.id === saveBlockId) ?? null) : null,
+  );
+  const sectionIds = useEditor((state) => state.doc.sections.map((block) => block.id).join(","));
   const saveBeforePublish = useCallback(() => flush(), [flush]);
 
   useUndoShortcuts(store);
@@ -83,6 +130,7 @@ function EditorShell({ data, store }: { data: EditorData; store: EditorStore }) 
   const editorActions = {
     openPublish: () => setPublishOpen(true),
     navigate: (href: string) => void navigate(href),
+    saveForReuse: (id: string) => setSaveBlockId(id),
   };
 
   return (
@@ -154,6 +202,23 @@ function EditorShell({ data, store }: { data: EditorData; store: EditorStore }) 
             actions.insert(type, picker.index);
             setPicker((current) => ({ ...current, open: false }));
           }}
+          siteId={data.site.id}
+          onPageIds={sectionIds ? sectionIds.split(",") : []}
+          onLink={(item) => {
+            actions.link(item, picker.index);
+            setPicker((current) => ({ ...current, open: false }));
+          }}
+          onCopy={(item) => {
+            actions.copy(item, picker.index);
+            setPicker((current) => ({ ...current, open: false }));
+          }}
+          beforeRemove={saveBeforePublish}
+        />
+
+        <SaveSectionDialog
+          block={saveBlock}
+          onOpenChange={(open) => !open && setSaveBlockId(null)}
+          beforeSave={saveBeforePublish}
         />
 
         <PublishDialog

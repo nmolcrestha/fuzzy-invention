@@ -22,6 +22,7 @@ export default async function SitePagesPage({ params }: PageProps<"/dashboard/si
   return (
     <PageManager
       siteId={site.id}
+      siteName={site.name}
       subdomain={site.subdomain}
       designChanged={site.designHasUnpublishedChanges || !site.publishedVersionId}
       checklist={checklist}
@@ -33,6 +34,7 @@ export default async function SitePagesPage({ params }: PageProps<"/dashboard/si
         showInNav: page.showInNav,
         publishedAt: page.publishedAt,
         hasUnpublishedChanges: page.hasUnpublishedChanges,
+        seo: page.seo,
       }))}
     />
   );

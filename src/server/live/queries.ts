@@ -4,7 +4,7 @@ import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { db } from "@/db";
-import { pages, pageVersions, sites, siteVersions } from "@/db/schema";
+import { pages, pageVersions, redirects, sites, siteVersions } from "@/db/schema";
 import type { SiteContext } from "@/sections/components";
 import { extraNavLinks, socialLinks } from "@/sections/navigation";
 import {
@@ -100,8 +100,32 @@ export async function getLivePage(siteId: string, path: string): Promise<PageSna
   return row ? parsePageSnapshot(row.snapshot) : null;
 }
 
+/** Where to send visitors of an old address (requirement PAGE-7), or null. */
+export async function getLiveRedirect(siteId: string, path: string): Promise<string | null> {
+  "use cache";
+  cacheTag(liveTags.site(siteId));
+  cacheLife("max");
+
+  const [row] = await db
+    .select({ toPath: redirects.toPath })
+    .from(redirects)
+    .where(and(eq(redirects.siteId, siteId), eq(redirects.fromPath, path)))
+    .limit(1);
+  return row?.toPath ?? null;
+}
+
+/**
+ * The current year, for copyright lines. Cached because live pages are prerendered, where reading
+ * the clock directly isn't allowed.
+ */
+export async function currentYear(): Promise<number> {
+  "use cache";
+  cacheLife("hours");
+  return new Date().getFullYear();
+}
+
 /** Menu, contact and social links as visitors see them: only live pages appear in the menu. */
-export function liveSiteContext(site: LiveSite): SiteContext {
+export function liveSiteContext(site: LiveSite, year: number): SiteContext {
   const byId = new Map(site.pages.map((page) => [page.id, page]));
   const { navigation, contact, name } = site.snapshot;
   return {
@@ -115,6 +139,8 @@ export function liveSiteContext(site: LiveSite): SiteContext {
     ],
     contact,
     social: socialLinks(navigation.social),
-    year: new Date().getFullYear(),
+    year,
+    logo: site.snapshot.branding.logo,
+    live: true,
   };
 }

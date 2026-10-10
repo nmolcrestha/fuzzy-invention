@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { saveDraft } from "@/server/editor/actions";
 
-import { type EditorStore, unsavedParts } from "./store";
+import { type EditorStore, sharedIsDirty, unsavedParts } from "./store";
 
 const DEBOUNCE_MS = 800;
 const MAX_RETRY_MS = 30_000;
@@ -53,7 +53,14 @@ export function createAutosaver(pageId: string, store: EditorStore) {
       return;
     }
 
-    const { doc, revisions } = state;
+    const { doc, revisions, shared } = state;
+    // Shared sections say which revision they started from, and whether they were edited here.
+    const sections = doc.sections.map((block) => {
+      const entry = shared[block.id];
+      return entry
+        ? { ...block, shared: { revision: entry.revision, dirty: sharedIsDirty(block, entry) } }
+        : block;
+    });
     const sent = {
       ...(parts.page && { sections: doc.sections }),
       ...(parts.design && { header: doc.header, footer: doc.footer }),
@@ -64,7 +71,7 @@ export function createAutosaver(pageId: string, store: EditorStore) {
       try {
         const result = await saveDraft({
           pageId,
-          ...(parts.page && { page: { revision: revisions.page, sections: doc.sections } }),
+          ...(parts.page && { page: { revision: revisions.page, sections } }),
           ...(parts.design && {
             design: { revision: revisions.design, header: doc.header, footer: doc.footer },
           }),
@@ -72,10 +79,13 @@ export function createAutosaver(pageId: string, store: EditorStore) {
 
         if (result.ok) {
           attempt = 0;
-          store.getState().markSaved(sent, {
-            page: result.data.pageRevision,
-            design: result.data.designRevision,
-          });
+          store
+            .getState()
+            .markSaved(
+              sent,
+              { page: result.data.pageRevision, design: result.data.designRevision },
+              result.data.sharedRevisions,
+            );
           store.getState().setStatus({ state: hasUnsaved() ? "pending" : "saved" });
         } else if (result.code === "conflict") {
           stopped = true;

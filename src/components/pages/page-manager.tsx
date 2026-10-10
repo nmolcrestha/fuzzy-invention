@@ -27,11 +27,14 @@ import {
   EyeOffIcon,
   FileTextIcon,
   GripVerticalIcon,
+  HistoryIcon,
   HomeIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
+  SearchIcon,
   Trash2Icon,
+  Undo2Icon,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -46,6 +49,7 @@ import { GettingStarted } from "@/components/sites/getting-started";
 import { PageStatusBadge } from "@/components/sites/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +68,8 @@ import {
   setPageInNav,
 } from "@/server/pages/actions";
 import { unpublishPage } from "@/server/publish/actions";
+import { discardPageChanges } from "@/server/versions/actions";
+import type { PageSeo } from "@/db/schema";
 import type { ChecklistItem } from "@/server/sites/queries";
 
 export type PageRow = {
@@ -74,18 +80,21 @@ export type PageRow = {
   showInNav: boolean;
   publishedAt: Date | null;
   hasUnpublishedChanges: boolean;
+  seo: PageSeo;
 };
 
 const UNDO_MS = 8000;
 
 export function PageManager({
   siteId,
+  siteName,
   subdomain,
   pages,
   designChanged,
   checklist,
 }: {
   siteId: string;
+  siteName: string;
   subdomain: string;
   pages: PageRow[];
   /** Site design (theme, header/footer, menu) has unpublished changes. */
@@ -104,7 +113,9 @@ export function PageManager({
     setItems(pages);
   }
 
-  const [dialog, setDialog] = useState<{ open: boolean; page?: PageRow }>({ open: false });
+  const [dialog, setDialog] = useState<{ open: boolean; page?: PageRow; tab?: "page" | "seo" }>({
+    open: false,
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -201,10 +212,24 @@ export function PageManager({
     );
   }
 
-  async function handleUnpublish(page: PageRow) {
-    const result = await unpublishPage(page.id);
+  async function handleUnpublish(page: PageRow, forwardToHome: boolean) {
+    const result = await unpublishPage(page.id, forwardToHome);
     if (!result.ok) throw new Error(result.error);
-    toast.success(`“${page.title}” is offline. It's still here as a draft.`);
+    toast.success(
+      forwardToHome
+        ? `“${page.title}” is offline. Visitors to ${page.path} are sent to your homepage.`
+        : `“${page.title}” is offline. It's still here as a draft.`,
+    );
+  }
+
+  async function handleDiscard(page: PageRow) {
+    const result = await discardPageChanges(page.id);
+    if (!result.ok) throw new Error(result.error);
+    toast.success(
+      result.data.addressKept
+        ? `Discarded the changes to “${page.title}”. It kept its new address because another page now uses the old one.`
+        : `Discarded the changes to “${page.title}”. The draft matches the live page again.`,
+    );
   }
 
   async function handleDuplicate(page: PageRow) {
@@ -283,15 +308,18 @@ export function PageManager({
                   key={page.id}
                   page={page}
                   editorHref={`/editor/${siteId}/${page.id}`}
+                  historyHref={`/dashboard/sites/${siteId}/history?item=${page.id}`}
                   isFirst={index === 0}
                   isLast={index === items.length - 1}
                   onMoveUp={() => move(index, -1)}
                   onMoveDown={() => move(index, 1)}
                   onEdit={() => setDialog({ open: true, page })}
+                  onEditSeo={() => setDialog({ open: true, page, tab: "seo" })}
                   onSetHome={() => handleSetHome(page)}
                   onToggleNav={() => handleToggleNav(page)}
                   onDuplicate={() => handleDuplicate(page)}
-                  onUnpublish={() => handleUnpublish(page)}
+                  onUnpublish={(forward) => handleUnpublish(page, forward)}
+                  onDiscard={() => handleDiscard(page)}
                   onDelete={() => handleDelete(page)}
                 />
               ))}
@@ -306,8 +334,10 @@ export function PageManager({
         open={dialog.open}
         onOpenChange={(open) => setDialog((current) => ({ ...current, open }))}
         siteId={siteId}
+        siteName={siteName}
         subdomain={subdomain}
         page={dialog.page}
+        initialTab={dialog.tab}
       />
     </section>
   );
@@ -316,19 +346,23 @@ export function PageManager({
 type RowProps = {
   page: PageRow;
   editorHref: string;
+  historyHref: string;
   isFirst: boolean;
   isLast: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onEdit: () => void;
+  onEditSeo: () => void;
   onSetHome: () => void;
   onToggleNav: () => void;
   onDuplicate: () => void;
-  onUnpublish: () => Promise<void>;
+  onUnpublish: (forwardToHome: boolean) => Promise<void>;
+  onDiscard: () => Promise<void>;
   onDelete: () => void;
 };
 
-function SortablePageRow({ page, editorHref, isFirst, isLast, ...actions }: RowProps) {
+function SortablePageRow({ page, editorHref, historyHref, isFirst, isLast, ...actions }: RowProps) {
+  const [forwardToHome, setForwardToHome] = useState(true);
   const {
     attributes,
     listeners,
@@ -443,6 +477,10 @@ function SortablePageRow({ page, editorHref, isFirst, isLast, ...actions }: RowP
               <PencilIcon aria-hidden />
               Rename or change address
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={actions.onEditSeo}>
+              <SearchIcon aria-hidden />
+              Search &amp; social settings
+            </DropdownMenuItem>
             {!page.isHome && (
               <DropdownMenuItem onClick={actions.onSetHome}>
                 <HomeIcon aria-hidden />
@@ -464,18 +502,52 @@ function SortablePageRow({ page, editorHref, isFirst, isLast, ...actions }: RowP
                 title={`Take “${page.title}” offline?`}
                 description="The page stays here as a draft. You can publish it again any time."
                 consequences={[
-                  `Visitors to ${page.path} will see a “page not found” error.`,
+                  forwardToHome
+                    ? `Visitors to ${page.path} will be sent to your homepage.`
+                    : `Visitors to ${page.path} will see a “page not found” error.`,
                   "It disappears from your live menu.",
                 ]}
                 confirmLabel="Take page offline"
                 tone="destructive"
-                onConfirm={actions.onUnpublish}
-              />
+                onConfirm={() => actions.onUnpublish(forwardToHome)}
+              >
+                <label className="flex items-start gap-2 text-sm">
+                  <Checkbox
+                    checked={forwardToHome}
+                    onCheckedChange={(value) => setForwardToHome(Boolean(value))}
+                    className="mt-0.5"
+                  />
+                  Send visitors of {page.path} to the homepage instead of an error page
+                </label>
+              </ConfirmDialog>
             )}
             <DropdownMenuItem onClick={actions.onDuplicate}>
               <CopyIcon aria-hidden />
               Duplicate
             </DropdownMenuItem>
+            <DropdownMenuItem render={<Link href={historyHref} />}>
+              <HistoryIcon aria-hidden />
+              Version history
+            </DropdownMenuItem>
+            {page.publishedAt && page.hasUnpublishedChanges && (
+              <ConfirmDialog
+                trigger={
+                  <DropdownMenuItem closeOnClick={false}>
+                    <Undo2Icon aria-hidden />
+                    Discard unpublished changes
+                  </DropdownMenuItem>
+                }
+                title={`Discard the changes to “${page.title}”?`}
+                description="The draft goes back to exactly what's live now."
+                consequences={[
+                  "Every edit since the last publish is thrown away.",
+                  "Your live website doesn't change.",
+                ]}
+                confirmLabel="Discard changes"
+                tone="destructive"
+                onConfirm={actions.onDiscard}
+              />
+            )}
             <DropdownMenuSeparator />
             {page.isHome ? (
               <DropdownMenuItem disabled>

@@ -287,7 +287,17 @@ const company: TemplateDefinition = {
       {
         title: "Contact",
         path: "/contact",
-        sections: [{ type: "contact", variant: "split" }],
+        sections: [
+          {
+            type: "form",
+            variant: "card",
+            data: {
+              heading: "Tell us about your project",
+              intro: "A few lines are enough. We'll reply within one working day.",
+            },
+          },
+          { type: "contact", variant: "split", style: { background: "muted" } },
+        ],
       },
     ],
   }),

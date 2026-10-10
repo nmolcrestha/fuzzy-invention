@@ -2,7 +2,9 @@
 
 import { toast } from "sonner";
 
+import { withFreshIds } from "@/sections/fields";
 import { getSectionDef } from "@/sections/registry";
+import type { LibraryItem } from "@/server/library/queries";
 
 import { ops } from "./doc-ops";
 import { useEditorStore } from "./store";
@@ -83,6 +85,45 @@ export function useSectionActions() {
 
     move(from: number, to: number) {
       change((doc) => ops.move(doc, from, to));
+    },
+
+    /** Adds a saved section that stays in sync everywhere it's used (SEC-7 "Link"). */
+    link(item: LibraryItem, index: number) {
+      const block = { ...item.block, isHidden: false };
+      store.getState().setShared(block, item);
+      change((doc) => ops.insertBlock(doc, block, index));
+      select(block.id);
+      setTimeout(() => requestScroll(block.id), 50);
+      toast(`Added “${item.name}”. Edits here also change it on the other pages that use it.`);
+    },
+
+    /** Adds an independent copy of a saved section (SEC-7 "Copy"). */
+    copy(item: LibraryItem, index: number) {
+      const block = {
+        ...structuredClone(item.block),
+        id: globalThis.crypto.randomUUID(),
+        data: withFreshIds(structuredClone(item.block.data)),
+        isHidden: false,
+      };
+      change((doc) => ops.insertBlock(doc, block, index));
+      select(block.id);
+      setTimeout(() => requestScroll(block.id), 50);
+    },
+
+    /** Turns a shared section into one that only belongs to this page (SEC-8). */
+    detach(id: string) {
+      let copyId = "";
+      change((doc) => {
+        const [next, copy] = ops.detach(doc, id);
+        copyId = copy?.id ?? "";
+        return next;
+      });
+      if (!copyId) return;
+      select(copyId);
+      toast("Detached. Changes to this section now only apply to this page.", {
+        duration: UNDO_MS,
+        action: { label: "Undo", onClick: () => store.getState().undo() },
+      });
     },
   };
 }

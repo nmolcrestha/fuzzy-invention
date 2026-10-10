@@ -65,6 +65,26 @@ export function describeActivity({ action, metadata: m }: Entry): string {
         : `hid “${str(m.title)}” from the menu`;
     case "pages.reordered":
       return "changed the order of pages";
+    case "page.seo_changed":
+      return `changed how “${str(m.title)}” appears in search results and social media`;
+    case "page.version_restored":
+      return `restored an earlier version of “${str(m.title)}”`;
+    case "page.changes_discarded":
+      return `discarded the unpublished changes to “${str(m.title)}”`;
+    case "site.design_restored":
+      return "restored an earlier version of the site design";
+    case "site.design_discarded":
+      return "discarded the unpublished changes to the site design";
+    case "media.uploaded":
+      return `uploaded the image “${str(m.fileName)}”`;
+    case "media.deleted":
+      return `deleted the image “${str(m.fileName)}”`;
+    case "section.saved_to_library":
+      return `saved the section “${str(m.name)}” for reuse`;
+    case "section.removed_from_library":
+      return `removed “${str(m.name)}” from saved sections`;
+    case "redirect.deleted":
+      return `stopped forwarding ${str(m.fromPath)} to ${str(m.toPath)}`;
     default:
       return "made a change";
   }

@@ -12,6 +12,7 @@ import { chromeBlock, normalizeBlock, type SectionBlock } from "@/sections/regis
 import type { PageDocument } from "@/sections/site-page";
 import { normalizeTheme } from "@/sections/theme";
 import { findOwnedPage } from "@/server/sites/access";
+import { sharedInfoById } from "@/server/library/queries";
 import { getChecklist } from "@/server/sites/queries";
 
 type PageSummary = { id: string; title: string; path: string; showInNav: boolean; isHome: boolean };
@@ -37,6 +38,7 @@ export function buildSiteContext(
     },
     social: socialLinks(navigation.social),
     year: new Date().getFullYear(),
+    logo: site.settings.logo?.src ? site.settings.logo : undefined,
   };
 }
 
@@ -84,13 +86,21 @@ export async function loadEditor(siteId: string, pageId: string) {
 
   return {
     site: { id: site.id, name: site.name, subdomain: site.subdomain },
-    page: { id: page.id, title: page.title, path: page.path },
+    page: {
+      id: page.id,
+      title: page.title,
+      path: page.path,
+      isHome: page.isHome,
+      publishedAt: page.publishedAt,
+      seo: page.seo,
+    },
     revisions: { page: page.draftRevision, design: site.designRevision },
     theme: normalizeTheme(site.theme),
     doc,
     pages: sitePages,
     siteContext: buildSiteContext(site, sitePages),
     checklist: await getChecklist(site.id),
+    shared: await sharedInfoById(site.id),
   };
 }
 

@@ -83,6 +83,28 @@ export const ops = {
     return [{ ...doc, sections }, copy];
   },
 
+  /** Puts an existing block (e.g. from saved sections) at `index`. */
+  insertBlock: (doc: PageDocument, block: SectionBlock, index: number): PageDocument => {
+    const sections = [...doc.sections];
+    sections.splice(Math.max(0, Math.min(index, sections.length)), 0, block);
+    return { ...doc, sections };
+  },
+
+  /** Swaps a shared section for a local copy with a new id ("Detach"). */
+  detach: (doc: PageDocument, id: string): [PageDocument, SectionBlock | null] => {
+    const index = doc.sections.findIndex((block) => block.id === id);
+    if (index === -1) return [doc, null];
+    const source = doc.sections[index]!;
+    const copy: SectionBlock = {
+      ...structuredClone(source),
+      id: globalThis.crypto.randomUUID(),
+      data: withFreshIds(structuredClone(source.data)),
+    };
+    const sections = [...doc.sections];
+    sections[index] = copy;
+    return [{ ...doc, sections }, copy];
+  },
+
   remove: (doc: PageDocument, id: string) => ({
     ...doc,
     sections: doc.sections.filter((block) => block.id !== id),

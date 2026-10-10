@@ -2,11 +2,19 @@
 
 import { createContext, useContext } from "react";
 
+import type { PageSeo } from "@/db/schema";
 import type { ChecklistItem } from "@/server/sites/queries";
 
 export type EditorMeta = {
   site: { id: string; name: string; subdomain: string };
-  page: { id: string; title: string; path: string };
+  page: {
+    id: string;
+    title: string;
+    path: string;
+    isHome: boolean;
+    publishedAt: Date | null;
+    seo: PageSeo;
+  };
   pages: { id: string; title: string; path: string; showInNav: boolean; isHome: boolean }[];
   checklist: { items: ChecklistItem[]; homePageId: string | null } | null;
 };
@@ -15,6 +23,8 @@ export type EditorMeta = {
 export type EditorActions = {
   openPublish: () => void;
   navigate: (href: string) => void;
+  /** Opens "Save section for reuse" for a section on this page. */
+  saveForReuse: (id: string) => void;
 };
 
 export const EditorActionsContext = createContext<EditorActions | null>(null);

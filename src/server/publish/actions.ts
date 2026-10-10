@@ -1,22 +1,24 @@
 "use server";
 
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { pages, pageVersions, sites, siteVersions } from "@/db/schema";
+import { pages, pageSections, pageVersions, sections, sites, siteVersions } from "@/db/schema";
 import { requireUser } from "@/lib/session";
 import { siteUrl } from "@/lib/site-url";
 import { checkBlock, checkSections } from "@/sections/checks";
 import { extraNavLinks, normalizeNavigation } from "@/sections/navigation";
 import { chromeBlock } from "@/sections/registry";
 import { type PageSnapshot, parseSiteSnapshot, type SiteSnapshot } from "@/sections/snapshot";
+import { seoProblems } from "@/sections/seo";
 import { normalizeTheme, themeWarnings } from "@/sections/theme";
 import { type ActionResult, fail, NOT_FOUND, ok, UNEXPECTED } from "@/server/action-result";
 import { logActivity } from "@/server/activity";
 import { loadPageSections } from "@/server/editor/queries";
 import { invalidateLiveSite } from "@/server/live-cache";
+import { addRedirect, clearRedirectsFrom } from "@/server/redirects/queries";
 import { findOwnedPage, findOwnedSite } from "@/server/sites/access";
 
 export type PublishPageItem = {
@@ -30,6 +32,8 @@ export type PublishPageItem = {
   inLiveMenu: boolean;
   problems: string[];
   internalLinks: string[];
+  /** Shared sections on this page; pages that share one with the current page are pre-selected. */
+  sharedSectionIds: string[];
 };
 
 export type PublishSummary = {
@@ -49,7 +53,7 @@ export async function getPublishSummary(siteId: string): Promise<ActionResult<Pu
   const site = await findOwnedSite(me.id, siteId);
   if (!site) return fail(NOT_FOUND);
 
-  const [sitePages, liveVersion] = await Promise.all([
+  const [sitePages, liveVersion, sharedPlacements] = await Promise.all([
     db
       .select()
       .from(pages)
@@ -58,6 +62,11 @@ export async function getPublishSummary(siteId: string): Promise<ActionResult<Pu
     site.publishedVersionId
       ? db.select().from(siteVersions).where(eq(siteVersions.id, site.publishedVersionId)).limit(1)
       : Promise.resolve([]),
+    db
+      .select({ pageId: pageSections.pageId, sectionId: pageSections.sectionId })
+      .from(pageSections)
+      .innerJoin(sections, eq(sections.id, pageSections.sectionId))
+      .where(and(eq(sections.siteId, site.id), eq(sections.isShared, true))),
   ]);
   const liveMenu = new Set(
     liveVersion[0] ? parseSiteSnapshot(liveVersion[0].snapshot).navigation.pageIds : [],
@@ -66,6 +75,7 @@ export async function getPublishSummary(siteId: string): Promise<ActionResult<Pu
   const items = await Promise.all(
     sitePages.map(async (page): Promise<PublishPageItem> => {
       const check = checkSections(await loadPageSections(page.id));
+      check.problems.push(...seoProblems(page.seo));
       return {
         id: page.id,
         title: page.title,
@@ -77,6 +87,9 @@ export async function getPublishSummary(siteId: string): Promise<ActionResult<Pu
         inLiveMenu: liveMenu.has(page.id),
         problems: check.problems,
         internalLinks: check.internalLinks,
+        sharedSectionIds: sharedPlacements
+          .filter((row) => row.pageId === page.id)
+          .map((row) => row.sectionId),
       };
     }),
   );
@@ -115,7 +128,28 @@ const publishInput = z.object({
   siteId: z.uuid(),
   pageIds: z.array(z.uuid()).max(500),
   includeDesign: z.boolean(),
+  /** Moved pages whose old live address should forward visitors to the new one. */
+  redirectPageIds: z.array(z.uuid()).max(500).optional().default([]),
+  /** Optional note shown in version history. */
+  note: z.string().trim().max(200).optional().default(""),
 });
+
+/** Versions kept per page (and for the site design). The live version is always kept. */
+const VERSIONS_KEPT = 50;
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function pruneVersions(tx: Tx, kind: "page" | "site", id: string) {
+  const table = kind === "page" ? pageVersions : siteVersions;
+  const owner = kind === "page" ? pageVersions.pageId : siteVersions.siteId;
+  const keep = tx
+    .select({ id: table.id })
+    .from(table)
+    .where(eq(owner, id))
+    .orderBy(desc(table.createdAt))
+    .limit(VERSIONS_KEPT);
+  await tx.delete(table).where(and(eq(owner, id), notInArray(table.id, keep)));
+}
 
 class PublishError extends Error {}
 
@@ -126,7 +160,7 @@ export async function publishChanges(
   const me = await requireUser();
   const parsed = publishInput.safeParse(input);
   if (!parsed.success) return fail(UNEXPECTED);
-  const { siteId, pageIds, includeDesign } = parsed.data;
+  const { siteId, pageIds, includeDesign, redirectPageIds, note } = parsed.data;
 
   const site = await findOwnedSite(me.id, siteId);
   if (!site) return fail(NOT_FOUND);
@@ -173,6 +207,20 @@ export async function publishChanges(
         finalPaths.set(path, page.id);
       }
 
+      // Old live addresses of moved pages forward to the new ones (unless something else lives there).
+      await clearRedirectsFrom(tx, site.id, [...finalPaths.keys()]);
+      for (const page of chosen) {
+        const from = page.publishedVersionId ? page.publishedPath : null;
+        if (
+          from &&
+          from !== page.path &&
+          redirectPageIds.includes(page.id) &&
+          !finalPaths.has(from)
+        ) {
+          await addRedirect(tx, site.id, from, page.path);
+        }
+      }
+
       const now = new Date();
       for (const page of chosen) {
         const sections = await loadPageSections(page.id);
@@ -185,7 +233,13 @@ export async function publishChanges(
         };
         const [version] = await tx
           .insert(pageVersions)
-          .values({ pageId: page.id, siteId: site.id, snapshot, publishedBy: me.id })
+          .values({
+            pageId: page.id,
+            siteId: site.id,
+            snapshot,
+            note: note || null,
+            publishedBy: me.id,
+          })
           .returning({ id: pageVersions.id });
         await tx
           .update(pages)
@@ -197,6 +251,7 @@ export async function publishChanges(
             hasUnpublishedChanges: sql`${pages.draftRevision} <> ${page.draftRevision}`,
           })
           .where(eq(pages.id, page.id));
+        await pruneVersions(tx, "page", page.id);
       }
 
       if (includeDesign) {
@@ -215,10 +270,15 @@ export async function publishChanges(
             phone: site.settings.phone || undefined,
             address: site.settings.address || undefined,
           },
+          branding: {
+            logo: site.settings.logo?.src ? site.settings.logo : undefined,
+            favicon: site.settings.favicon || undefined,
+            socialImage: site.settings.socialImage || undefined,
+          },
         };
         const [version] = await tx
           .insert(siteVersions)
-          .values({ siteId: site.id, snapshot, publishedBy: me.id })
+          .values({ siteId: site.id, snapshot, note: note || null, publishedBy: me.id })
           .returning({ id: siteVersions.id });
         await tx
           .update(sites)
@@ -228,6 +288,7 @@ export async function publishChanges(
             status: "live",
           })
           .where(eq(sites.id, site.id));
+        await pruneVersions(tx, "site", site.id);
       } else {
         await tx.update(sites).set({ status: "live", updatedAt: now }).where(eq(sites.id, site.id));
       }
@@ -254,8 +315,11 @@ export async function publishChanges(
   }
 }
 
-/** Takes one page off the live website (it stays in the dashboard as a draft). */
-export async function unpublishPage(pageId: string): Promise<ActionResult> {
+/**
+ * Takes one page off the live website (it stays in the dashboard as a draft). With
+ * `forwardToHome`, visitors of its address are sent to the homepage instead of a 404.
+ */
+export async function unpublishPage(pageId: string, forwardToHome = false): Promise<ActionResult> {
   const me = await requireUser();
   const row = await findOwnedPage(me.id, pageId);
   if (!row || !row.page.publishedVersionId) return fail(NOT_FOUND);
@@ -275,6 +339,9 @@ export async function unpublishPage(pageId: string): Promise<ActionResult> {
         hasUnpublishedChanges: true,
       })
       .where(eq(pages.id, row.page.id));
+    if (forwardToHome && row.page.publishedPath) {
+      await addRedirect(tx, row.site.id, row.page.publishedPath, "/");
+    }
     await logActivity(tx, {
       siteId: row.site.id,
       userId: me.id,

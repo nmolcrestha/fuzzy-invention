@@ -4,7 +4,7 @@ import { chromeBlock, newSectionBlock } from "@/sections/registry";
 import type { PageDocument } from "@/sections/site-page";
 
 import { getIn, ops, setIn } from "./doc-ops";
-import { createEditorStore, unsavedParts } from "./store";
+import { createEditorStore, sharedIsDirty, unsavedParts } from "./store";
 
 function makeDoc(): PageDocument {
   return {
@@ -89,5 +89,59 @@ describe("editor store", () => {
     store.getState().select(added);
     store.getState().undo();
     expect(store.getState().selectedId).toBeNull();
+  });
+});
+
+describe("shared sections", () => {
+  const info = { name: "Closing CTA", revision: 3, pages: [] };
+
+  it("detaches into a copy with a new id, keeping the content", () => {
+    const doc = makeDoc();
+    const source = doc.sections[1]!;
+    const [next, copy] = ops.detach(doc, source.id);
+    expect(copy!.id).not.toBe(source.id);
+    expect(next.sections[1]).toBe(copy);
+    expect(copy!.data.heading).toBe(source.data.heading);
+  });
+
+  it("only counts content edits as changes to a shared section", () => {
+    const doc = makeDoc();
+    const block = doc.sections[0]!;
+    const store = createEditorStore({
+      doc,
+      revisions: { page: 0, design: 0 },
+      shared: { [block.id]: info },
+    });
+    const entry = () => store.getState().shared[block.id]!;
+    expect(sharedIsDirty(store.getState().doc.sections[0]!, entry())).toBe(false);
+
+    // Hiding is per page, so it doesn't change the shared content.
+    store.getState().change((d) => ops.toggleHidden(d, block.id));
+    expect(sharedIsDirty(store.getState().doc.sections[0]!, entry())).toBe(false);
+
+    store.getState().change((d) => ops.setField(d, block.id, ["heading"], "New"));
+    const edited = store.getState().doc.sections[0]!;
+    expect(sharedIsDirty(edited, entry())).toBe(true);
+
+    // After a save, the new revision and content become the baseline.
+    store
+      .getState()
+      .markSaved(
+        { sections: store.getState().doc.sections },
+        { page: 1, design: null },
+        { [block.id]: 4 },
+      );
+    expect(entry().revision).toBe(4);
+    expect(sharedIsDirty(edited, entry())).toBe(false);
+  });
+
+  it("starts linked sections as unchanged", () => {
+    const doc = makeDoc();
+    const store = createEditorStore({ doc, revisions: { page: 0, design: 0 } });
+    const linked = newSectionBlock("cta");
+    store.getState().setShared(linked, info);
+    store.getState().change((d) => ops.insertBlock(d, linked, 1));
+    expect(store.getState().doc.sections[1]).toBe(linked);
+    expect(sharedIsDirty(linked, store.getState().shared[linked.id]!)).toBe(false);
   });
 });

@@ -15,6 +15,7 @@
   --color-sq-muted-fg: var(--sq-muted-fg);
   --color-sq-surface: var(--sq-surface);
   --color-sq-border: var(--sq-border);
+  --color-sq-danger: var(--sq-danger);
   --radius-sq: var(--sq-radius);
   --font-sq-heading: var(--sq-font-heading);
   --color-background: var(--background);

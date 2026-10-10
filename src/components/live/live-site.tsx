@@ -1,24 +1,24 @@
 import { SitePage } from "@/sections/site-page";
 import type { PageSnapshot } from "@/sections/snapshot";
-import { type LiveSite, liveSiteContext } from "@/server/live/queries";
+import { currentYear, type LiveSite, liveSiteContext } from "@/server/live/queries";
 
 /** A published page as visitors see it. */
-export function LivePage({ site, page }: { site: LiveSite; page: PageSnapshot }) {
+export async function LivePage({ site, page }: { site: LiveSite; page: PageSnapshot }) {
   return (
     <SitePage
       doc={{ header: site.snapshot.header, footer: site.snapshot.footer, sections: page.sections }}
-      site={liveSiteContext(site)}
+      site={liveSiteContext(site, await currentYear())}
       theme={site.snapshot.theme}
     />
   );
 }
 
 /** The site's own 404 page, with its header, footer and theme. */
-export function LiveNotFound({ site }: { site: LiveSite }) {
+export async function LiveNotFound({ site }: { site: LiveSite }) {
   return (
     <SitePage
       doc={{ header: site.snapshot.header, footer: site.snapshot.footer, sections: [] }}
-      site={liveSiteContext(site)}
+      site={liveSiteContext(site, await currentYear())}
       theme={site.snapshot.theme}
     >
       <section data-spacing="spacious">

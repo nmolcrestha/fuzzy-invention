@@ -2,6 +2,7 @@
 import { z } from "zod";
 
 import { normalizePath, pathProblem, subdomainProblem } from "@/lib/slug";
+import { pageSeoSchema } from "@/sections/seo";
 
 export const SITE_KINDS = [
   { value: "saas", label: "SaaS / app", hint: "Landing page with features, pricing and FAQ" },
@@ -58,6 +59,18 @@ export const updateSiteSchema = z.object({
   address: optionalText(200, "Keep the address under 200 characters."),
 });
 
+const imageUrl = z.union([
+  z.literal(""),
+  z.url({ protocol: /^https?$/, message: "Choose an image." }),
+]);
+
+export const updateBrandingSchema = z.object({
+  siteId: z.uuid(),
+  logo: z.object({ src: imageUrl, alt: z.string().trim().max(200) }),
+  favicon: imageUrl,
+  socialImage: imageUrl,
+});
+
 const pageTitle = z
   .string()
   .trim()
@@ -88,6 +101,8 @@ export const updatePageSchema = z.object({
   pageId: z.uuid(),
   title: pageTitle,
   path: pagePath,
+  /** Omit to leave the search & social settings unchanged. */
+  seo: pageSeoSchema.optional(),
 });
 
 export const reorderPagesSchema = z.object({
@@ -97,5 +112,6 @@ export const reorderPagesSchema = z.object({
 
 export type CreateSiteInput = z.input<typeof createSiteSchema>;
 export type UpdateSiteInput = z.input<typeof updateSiteSchema>;
+export type UpdateBrandingInput = z.input<typeof updateBrandingSchema>;
 export type CreatePageInput = z.input<typeof createPageSchema>;
 export type UpdatePageInput = z.input<typeof updatePageSchema>;

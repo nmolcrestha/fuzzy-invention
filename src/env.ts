@@ -17,6 +17,8 @@ const schema = z.object({
   EMAIL_FROM: z.string().default("Side Quest <onboarding@resend.dev>"),
   GOOGLE_CLIENT_ID: optional,
   GOOGLE_CLIENT_SECRET: optional,
+  /** Vercel Blob. Without it, uploads are stored in .data/uploads (development). */
+  BLOB_READ_WRITE_TOKEN: optional,
 });
 
 const parsed = schema.safeParse(process.env);

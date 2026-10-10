@@ -11,6 +11,7 @@
   --sq-muted-fg: #52525b;
   --sq-surface: #ffffff;
   --sq-border: #e4e4e7;
+  --sq-danger: #b91c1c;
   --sq-radius: 0.75rem;
   --sq-font-heading: var(--font-sans);
   --sq-font-body: var(--font-sans);
@@ -39,6 +40,13 @@
   --sq-border: color-mix(in oklab, var(--sq-primary-fg) 25%, transparent);
   --sq-surface: color-mix(in oklab, var(--sq-primary-fg) 10%, transparent);
   color: var(--sq-fg);
+}
+.sq-site [data-bg="dark"],
+.sq-site[data-mode="dark"] {
+  --sq-danger: #f87171;
+}
+.sq-site [data-bg="primary"] {
+  --sq-danger: var(--sq-primary-fg);
 }
 .sq-site [data-bg="dark"] {
   background: #0b0b0f;
@@ -175,4 +183,49 @@
 .sq-site .sq-prose a {
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* ---- Contact form ---- */
+.sq-site .sq-input {
+  width: 100%;
+  border: 1px solid var(--sq-border);
+  border-radius: calc(var(--sq-radius) * 0.6);
+  background: var(--sq-surface);
+  color: var(--sq-fg);
+  padding: 0.625rem 0.75rem;
+  font: inherit;
+}
+.sq-site .sq-input:focus-visible {
+  outline: 2px solid var(--sq-primary);
+  outline-offset: 1px;
+}
+.sq-site .sq-input[aria-invalid="true"] {
+  border-color: var(--sq-danger);
+}
+/* Off-screen trap field for bots (not display:none, which some bots skip). */
+.sq-site .sq-hp {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.sq-site .sq-form-message {
+  border: 1px solid var(--sq-border);
+  border-radius: var(--sq-radius);
+  background: var(--sq-surface);
+  padding: 1.25rem;
+  font-weight: 500;
+}
+/* Without JavaScript, the submit route redirects to #sq-sent-… or #sq-failed-…. */
+.sq-site .sq-form-sent,
+.sq-site .sq-form-failed {
+  display: none;
+}
+.sq-site .sq-form-sent:target,
+.sq-site .sq-form-failed:target {
+  display: block;
+}
+.sq-site .sq-form:has(.sq-form-sent:target) form {
+  display: none;
 }

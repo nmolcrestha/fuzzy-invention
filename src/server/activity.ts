@@ -23,7 +23,17 @@ export type ActivityAction =
   | "page.restored"
   | "page.set_home"
   | "page.nav_changed"
-  | "pages.reordered";
+  | "pages.reordered"
+  | "page.seo_changed"
+  | "page.version_restored"
+  | "page.changes_discarded"
+  | "site.design_restored"
+  | "site.design_discarded"
+  | "media.uploaded"
+  | "media.deleted"
+  | "section.saved_to_library"
+  | "section.removed_from_library"
+  | "redirect.deleted";
 
 export async function logActivity(
   tx: Tx,
@@ -31,7 +41,7 @@ export async function logActivity(
     siteId: string;
     userId: string;
     action: ActivityAction;
-    entityType: "site" | "page";
+    entityType: "site" | "page" | "media" | "section";
     entityId?: string;
     metadata?: Record<string, unknown>;
   },

@@ -28,6 +28,14 @@ export type SiteSettings = {
   address?: string;
   /** The getting-started checklist was closed by the user. */
   checklistDismissed?: boolean;
+  /** Shown in the header instead of the site name's first letter. */
+  logo?: { src: string; alt: string };
+  /** Browser-tab icon for the live site. */
+  favicon?: string;
+  /** Used when a page has no social image of its own. */
+  socialImage?: string;
+  /** Email the owner about new form messages (default on). */
+  formNotifications?: boolean;
 };
 
 export type SectionStyle = {
@@ -48,6 +56,8 @@ export type ChromeBlock = {
 export type PageSeo = {
   title?: string;
   description?: string;
+  /** Image shown when the page is shared on social media. */
+  image?: string;
   noindex?: boolean;
 };
 
@@ -154,6 +164,9 @@ export const sections = pgTable(
     // Saved-section library (Phase 5).
     isShared: boolean("is_shared").notNull().default(false),
     libraryName: text("library_name"),
+    // Bumped when a shared section's content changes; guards against overwriting edits made from
+    // another page.
+    revision: integer("revision").notNull().default(0),
     ...timestamps,
   },
   (table) => [index("sections_site_id_idx").on(table.siteId)],
@@ -188,6 +201,7 @@ export const siteVersions = pgTable(
       .notNull()
       .references(() => sites.id, { onDelete: "cascade" }),
     snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+    note: text("note"),
     publishedBy: text("published_by").references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -206,6 +220,7 @@ export const pageVersions = pgTable(
       .notNull()
       .references(() => sites.id, { onDelete: "cascade" }),
     snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+    note: text("note"),
     publishedBy: text("published_by").references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -232,8 +247,75 @@ export const activityLog = pgTable(
   (table) => [index("activity_log_site_created_idx").on(table.siteId, table.createdAt)],
 );
 
+/** An uploaded image. Kept in storage while any published version still uses it. */
+export const mediaAssets = pgTable(
+  "media_assets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    siteId: uuid("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    /** Blob pathname (or the local file name in development). */
+    storageKey: text("storage_key").notNull().unique(),
+    url: text("url").notNull(),
+    fileName: text("file_name").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    alt: text("alt").notNull().default(""),
+    uploadedBy: text("uploaded_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [index("media_assets_site_created_idx").on(table.siteId, table.createdAt)],
+);
+
+/** Sends visitors from an old live address to a page's new one. */
+export const redirects = pgTable(
+  "redirects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    siteId: uuid("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    fromPath: text("from_path").notNull(),
+    toPath: text("to_path").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("redirects_site_from_unique").on(table.siteId, table.fromPath)],
+);
+
+export type SubmissionField = { label: string; value: string };
+
+/** A message sent through a contact form on a live site. */
+export const formSubmissions = pgTable(
+  "form_submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    siteId: uuid("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    pageId: uuid("page_id").references(() => pages.id, { onDelete: "set null" }),
+    sectionId: uuid("section_id"),
+    pageTitle: text("page_title").notNull().default(""),
+    data: jsonb("data").$type<{ fields: SubmissionField[] }>().notNull(),
+    isRead: boolean("is_read").notNull().default(false),
+    /** Salted hash of the sender's IP, only used for rate limiting. */
+    ipHash: text("ip_hash"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("form_submissions_site_created_idx").on(table.siteId, table.createdAt),
+    index("form_submissions_ip_created_idx").on(table.ipHash, table.createdAt),
+  ],
+);
+
 export type Site = typeof sites.$inferSelect;
 export type Page = typeof pages.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;
 export type Section = typeof sections.$inferSelect;
 export type PageSection = typeof pageSections.$inferSelect;
+export type MediaAsset = typeof mediaAssets.$inferSelect;
+export type Redirect = typeof redirects.$inferSelect;
+export type FormSubmission = typeof formSubmissions.$inferSelect;

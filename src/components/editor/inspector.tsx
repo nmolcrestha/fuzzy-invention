@@ -1,6 +1,15 @@
 "use client";
 
-import { CopyIcon, EyeIcon, GlobeIcon, MousePointerClickIcon, Trash2Icon } from "lucide-react";
+import {
+  BookmarkPlusIcon,
+  CopyIcon,
+  EyeIcon,
+  GlobeIcon,
+  Link2Icon,
+  Link2OffIcon,
+  MousePointerClickIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { useId } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +51,12 @@ export function Inspector() {
     state.selectedId ? findBlock(state.doc, state.selectedId) : undefined,
   );
   const change = useEditor((state) => state.change);
+  const shared = useEditor((state) =>
+    state.selectedId ? state.shared[state.selectedId] : undefined,
+  );
   const actions = useSectionActions();
+  const { saveForReuse } = useEditorActions();
+  const { page } = useEditorMeta();
   const anchorId = useId();
 
   if (!selectedId || !block) {
@@ -76,6 +90,12 @@ export function Inspector() {
               Every page
             </Badge>
           )}
+          {shared && (
+            <Badge variant="secondary" className="gap-1">
+              <Link2Icon className="size-3" aria-hidden />
+              Shared
+            </Badge>
+          )}
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
           {chrome
@@ -85,6 +105,13 @@ export function Inspector() {
       </div>
 
       <div className="flex-1 space-y-6 overflow-y-auto p-4">
+        {shared && (
+          <SharedNotice
+            name={shared.name}
+            otherPages={shared.pages.filter((other) => other.id !== page.id)}
+            onDetach={() => actions.detach(block.id)}
+          />
+        )}
         {block.isHidden && (
           <div className="flex items-start justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
             <p>This section is hidden. Visitors won&apos;t see it.</p>
@@ -218,6 +245,19 @@ export function Inspector() {
         </section>
       </div>
 
+      {!chrome && !shared && (
+        <div className="border-t px-3 pt-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full"
+            onClick={() => saveForReuse(block.id)}
+          >
+            <BookmarkPlusIcon aria-hidden />
+            Save for reuse on other pages
+          </Button>
+        </div>
+      )}
       {!chrome && (
         <div className="flex gap-2 border-t p-3">
           <Button variant="outline" className="flex-1" onClick={() => actions.duplicate(block.id)}>
@@ -229,6 +269,37 @@ export function Inspector() {
             Delete
           </Button>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Requirements SEC-8 and SEC-8a: say where else edits show up, and what needs publishing. */
+function SharedNotice({
+  name,
+  otherPages,
+  onDetach,
+}: {
+  name: string;
+  otherPages: { id: string; title: string }[];
+  onDetach: () => void;
+}) {
+  const titles = otherPages.map((other) => `“${other.title}”`);
+  const list =
+    titles.length <= 1 ? titles.join("") : `${titles.slice(0, -1).join(", ")} and ${titles.at(-1)}`;
+  return (
+    <div className="grid gap-2 rounded-lg border border-sky-300 bg-sky-50 p-3 text-sm text-sky-950 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100">
+      <p className="font-medium">Saved section: {name}</p>
+      <p>
+        {otherPages.length === 0
+          ? "It isn't used on any other page yet. Add it elsewhere from “Add section” › Saved sections."
+          : `Changes here also appear on ${list}. Publish ${otherPages.length === 1 ? "that page" : "those pages"} too to show the change there.`}
+      </p>
+      {otherPages.length > 0 && (
+        <Button size="sm" variant="outline" className="w-fit bg-background" onClick={onDetach}>
+          <Link2OffIcon aria-hidden />
+          Detach and edit only here
+        </Button>
       )}
     </div>
   );

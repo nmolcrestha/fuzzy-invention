@@ -3,7 +3,9 @@
 import { createContext, useContext } from "react";
 import { createStore, useStore } from "zustand";
 
+import type { SectionBlock } from "@/sections/registry";
 import type { PageDocument } from "@/sections/site-page";
+import type { SharedInfo } from "@/server/library/queries";
 
 const HISTORY_LIMIT = 100;
 /** Typing in the same field within this window counts as one undo step. */
@@ -19,6 +21,26 @@ export type SaveStatus =
 
 export type Device = "desktop" | "tablet" | "mobile";
 
+type SharedContent = Pick<SectionBlock, "variant" | "data" | "style">;
+
+/** A shared section, plus the content last confirmed by the server (to tell if it was edited). */
+export type SharedEntry = SharedInfo & { base: SharedContent };
+
+/** True when a shared section's content differs from what the server last confirmed. */
+export function sharedIsDirty(block: SectionBlock, entry: SharedEntry): boolean {
+  return (
+    block.data !== entry.base.data ||
+    block.style !== entry.base.style ||
+    block.variant !== entry.base.variant
+  );
+}
+
+const contentOf = ({ variant, data, style }: SectionBlock): SharedContent => ({
+  variant,
+  data,
+  style,
+});
+
 type EditorState = {
   doc: PageDocument;
   /** The last document parts the server confirmed. Compared by identity to find unsaved work. */
@@ -28,6 +50,8 @@ type EditorState = {
     footer: PageDocument["footer"];
   };
   revisions: { page: number; design: number };
+  /** Shared sections on this page (and any linked during this session), by section id. */
+  shared: Record<string, SharedEntry>;
   selectedId: string | null;
   hoveredId: string | null;
   device: Device;
@@ -47,20 +71,30 @@ type EditorState = {
   setDevice: (device: Device) => void;
   setStatus: (status: SaveStatus) => void;
   requestScroll: (id: string) => void;
+  /** Records that a block is a shared section (after saving it for reuse, or linking it). */
+  setShared: (block: SectionBlock, info: SharedInfo) => void;
   markSaved: (
     sent: Partial<EditorState["saved"]>,
     revisions: { page: number | null; design: number | null },
+    sharedRevisions?: Record<string, number>,
   ) => void;
 };
 
 export function createEditorStore(init: {
   doc: PageDocument;
   revisions: { page: number; design: number };
+  shared?: Record<string, SharedInfo>;
 }) {
+  const shared: Record<string, SharedEntry> = {};
+  for (const block of init.doc.sections) {
+    const info = init.shared?.[block.id];
+    if (info) shared[block.id] = { ...info, base: contentOf(block) };
+  }
   return createStore<EditorState>()((set, get) => ({
     doc: init.doc,
     saved: { sections: init.doc.sections, header: init.doc.header, footer: init.doc.footer },
     revisions: init.revisions,
+    shared,
     selectedId: null,
     hoveredId: null,
     device: "desktop",
@@ -117,14 +151,27 @@ export function createEditorStore(init: {
     setStatus: (status) => set({ status }),
     requestScroll: (id) => set({ scrollRequest: { id, nonce: Date.now() } }),
 
-    markSaved: (sent, revisions) =>
+    setShared: (block, info) =>
       set((state) => ({
-        saved: { ...state.saved, ...sent },
-        revisions: {
-          page: revisions.page ?? state.revisions.page,
-          design: revisions.design ?? state.revisions.design,
-        },
+        shared: { ...state.shared, [block.id]: { ...info, base: contentOf(block) } },
       })),
+
+    markSaved: (sent, revisions, sharedRevisions = {}) =>
+      set((state) => {
+        const shared = { ...state.shared };
+        for (const [id, revision] of Object.entries(sharedRevisions)) {
+          const block = sent.sections?.find((section) => section.id === id);
+          if (shared[id] && block) shared[id] = { ...shared[id], revision, base: contentOf(block) };
+        }
+        return {
+          saved: { ...state.saved, ...sent },
+          revisions: {
+            page: revisions.page ?? state.revisions.page,
+            design: revisions.design ?? state.revisions.design,
+          },
+          shared,
+        };
+      }),
   }));
 }
 

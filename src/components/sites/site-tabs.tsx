@@ -5,13 +5,16 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
-export function SiteTabs({ siteId }: { siteId: string }) {
+export function SiteTabs({ siteId, unread = 0 }: { siteId: string; unread?: number }) {
   const pathname = usePathname();
   const base = `/dashboard/sites/${siteId}`;
-  const tabs = [
+  const tabs: { href: string; label: string; count?: number }[] = [
     { href: base, label: "Pages" },
     { href: `${base}/design`, label: "Design" },
     { href: `${base}/menu`, label: "Menu & social" },
+    { href: `${base}/media`, label: "Media" },
+    { href: `${base}/inbox`, label: "Messages", count: unread },
+    { href: `${base}/history`, label: "History" },
     { href: `${base}/settings`, label: "Settings" },
     { href: `${base}/activity`, label: "Activity" },
   ];
@@ -33,6 +36,15 @@ export function SiteTabs({ siteId }: { siteId: string }) {
             )}
           >
             {tab.label}
+            {(tab.count ?? 0) > 0 && (
+              <>
+                {" "}
+                <span className="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground tabular-nums">
+                  {tab.count}
+                  <span className="sr-only"> unread</span>
+                </span>
+              </>
+            )}
           </Link>
         );
       })}
