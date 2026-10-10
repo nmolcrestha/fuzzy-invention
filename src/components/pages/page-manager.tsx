@@ -42,6 +42,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { PageFormDialog } from "@/components/pages/page-form-dialog";
 import { PublishDialog } from "@/components/publish/publish-dialog";
+import { GettingStarted } from "@/components/sites/getting-started";
 import { PageStatusBadge } from "@/components/sites/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ import {
   setPageInNav,
 } from "@/server/pages/actions";
 import { unpublishPage } from "@/server/publish/actions";
+import type { ChecklistItem } from "@/server/sites/queries";
 
 export type PageRow = {
   id: string;
@@ -81,12 +83,14 @@ export function PageManager({
   subdomain,
   pages,
   designChanged,
+  checklist,
 }: {
   siteId: string;
   subdomain: string;
   pages: PageRow[];
   /** Site design (theme, header/footer, menu) has unpublished changes. */
   designChanged: boolean;
+  checklist: { items: ChecklistItem[]; homePageId: string | null } | null;
 }) {
   const [publishOpen, setPublishOpen] = useState(false);
   const unpublishedCount =
@@ -214,6 +218,33 @@ export function PageManager({
 
   return (
     <section className="space-y-4 pt-2">
+      {checklist && (
+        <GettingStarted
+          siteId={siteId}
+          items={checklist.items}
+          actions={{
+            homepage: checklist.homePageId && (
+              <ButtonLink
+                href={`/editor/${siteId}/${checklist.homePageId}`}
+                size="sm"
+                variant="outline"
+              >
+                Edit homepage
+              </ButtonLink>
+            ),
+            contact: (
+              <ButtonLink href={`/dashboard/sites/${siteId}/settings`} size="sm" variant="outline">
+                Add details
+              </ButtonLink>
+            ),
+            publish: (
+              <Button size="sm" variant="outline" onClick={() => setPublishOpen(true)}>
+                Publish
+              </Button>
+            ),
+          }}
+        />
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="sr-only">Pages</h2>

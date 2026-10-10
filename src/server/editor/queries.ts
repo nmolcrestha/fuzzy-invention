@@ -12,6 +12,7 @@ import { chromeBlock, normalizeBlock, type SectionBlock } from "@/sections/regis
 import type { PageDocument } from "@/sections/site-page";
 import { normalizeTheme } from "@/sections/theme";
 import { findOwnedPage } from "@/server/sites/access";
+import { getChecklist } from "@/server/sites/queries";
 
 type PageSummary = { id: string; title: string; path: string; showInNav: boolean; isHome: boolean };
 
@@ -89,6 +90,7 @@ export async function loadEditor(siteId: string, pageId: string) {
     doc,
     pages: sitePages,
     siteContext: buildSiteContext(site, sitePages),
+    checklist: await getChecklist(site.id),
   };
 }
 

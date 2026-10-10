@@ -30,7 +30,7 @@ function Block({
         Tag === "footer" && "border-t border-sq-border",
       )}
     >
-      <Component data={block.data} variant={block.variant} site={site} />
+      <Component data={block.data} variant={block.variant} site={site} sectionId={block.id} />
     </Tag>
   );
 }

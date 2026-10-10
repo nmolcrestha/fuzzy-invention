@@ -124,6 +124,28 @@
   color-scheme: dark;
 }
 
+/* ---- Pricing: monthly / yearly switch without JavaScript ---- */
+.sq-site .sq-billing label {
+  cursor: pointer;
+  border-radius: 9999px;
+  padding: 0.375rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--sq-muted-fg);
+}
+.sq-site .sq-billing input:checked + label {
+  background: var(--sq-primary);
+  color: var(--sq-primary-fg);
+}
+.sq-site .sq-billing input:focus-visible + label {
+  outline: 2px solid var(--sq-primary);
+  outline-offset: 2px;
+}
+.sq-site .sq-pricing:has(input[value="yearly"]:checked) [data-price="monthly"],
+.sq-site .sq-pricing:not(:has(input[value="yearly"]:checked)) [data-price="yearly"] {
+  display: none;
+}
+
 /* ---- Rich text ---- */
 .sq-site .sq-prose > * + * {
   margin-top: 1em;

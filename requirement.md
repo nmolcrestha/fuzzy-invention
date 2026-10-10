@@ -574,8 +574,12 @@ Templates are stored as seed JSON (same shape as a site snapshot) and are **clon
 - Proxy hostname routing, `/_sites` renderer, site-styled 404s, sitemap/robots, SEO/OG tags
 - **Done when:** `mysite.builder.app` serves published pages, an unpublished page returns 404, and editing a page doesn't affect the live site until that page is republished.
 
-### Phase 4 — Templates & onboarding (≈2 weeks)
+### Phase 4 — Templates & onboarding (≈2 weeks) ✅ done 2026-10-10
 
+- Added sections: Text and image, Numbers, Logo cloud, How it works, Testimonials, Team, Pricing (CSS-only monthly/yearly switch), Contact & map, Opening hours, Food menu, Gallery, Video (YouTube/Vimeo only)
+- Templates: Launch (SaaS), Studio (company), Trattoria (restaurant); validated by tests
+- 4-step onboarding wizard with live template and style previews; lands in the homepage editor
+- Getting-started checklist (homepage edited, contact details, published) on the Pages tab and in the editor
 - Remaining MVP sections (pricing, testimonials, team, stats, logo cloud, menu, hours, gallery, contact info, text + image…)
 - 3 templates (SaaS, Company, Restaurant) as seed snapshots
 - Onboarding wizard + getting-started checklist

@@ -80,3 +80,51 @@ export async function listActivity(siteId: string, limit = 50) {
     .orderBy(desc(activityLog.createdAt))
     .limit(limit);
 }
+
+export type ChecklistItem = {
+  id: "homepage" | "contact" | "publish";
+  label: string;
+  hint: string;
+  done: boolean;
+};
+
+/** Getting-started steps (requirement ONB-5), worked out from what the site already has. */
+export const getChecklist = cache(async (siteId: string) => {
+  const site = await getMySiteOr404(siteId);
+  if (site.settings.checklistDismissed) return null;
+
+  const [[edited], [home]] = await Promise.all([
+    db
+      .select({ id: activityLog.id })
+      .from(activityLog)
+      .where(and(eq(activityLog.siteId, site.id), eq(activityLog.action, "page.content_edited")))
+      .limit(1),
+    db
+      .select({ id: pages.id })
+      .from(pages)
+      .where(and(eq(pages.siteId, site.id), eq(pages.isHome, true), isNull(pages.deletedAt)))
+      .limit(1),
+  ]);
+
+  const items: ChecklistItem[] = [
+    {
+      id: "homepage",
+      label: "Make the homepage yours",
+      hint: "Change the headline and text to describe your business.",
+      done: Boolean(edited),
+    },
+    {
+      id: "contact",
+      label: "Add your contact details",
+      hint: "Your email, phone and address appear in the footer and contact sections.",
+      done: Boolean(site.settings.contactEmail || site.settings.phone || site.settings.address),
+    },
+    {
+      id: "publish",
+      label: "Publish your website",
+      hint: "Put it online so people can visit it.",
+      done: site.status === "live",
+    },
+  ];
+  return { items, homePageId: home?.id ?? null };
+});

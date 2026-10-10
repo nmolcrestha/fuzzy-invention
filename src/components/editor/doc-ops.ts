@@ -1,6 +1,7 @@
 // Pure, immutable operations on the editor document. Unchanged parts keep their identity,
 // which the store relies on to tell what still needs saving.
 import type { SectionStyle } from "@/db/schema";
+import { withFreshIds } from "@/sections/fields";
 import { newSectionBlock, type SectionBlock } from "@/sections/registry";
 import type { PageDocument } from "@/sections/site-page";
 
@@ -75,15 +76,8 @@ export const ops = {
       id: globalThis.crypto.randomUUID(),
       style: { ...source.style, anchorId: undefined },
     };
-    // List items need new ids too, so React keys and drag handles stay unique.
-    for (const [key, value] of Object.entries(copy.data)) {
-      if (
-        Array.isArray(value) &&
-        value.every((item) => item && typeof item === "object" && "id" in item)
-      ) {
-        copy.data[key] = value.map((item) => ({ ...item, id: globalThis.crypto.randomUUID() }));
-      }
-    }
+    // List items (at any depth) need new ids too, so React keys and drag handles stay unique.
+    copy.data = withFreshIds(copy.data);
     const sections = [...doc.sections];
     sections.splice(index + 1, 0, copy);
     return [{ ...doc, sections }, copy];

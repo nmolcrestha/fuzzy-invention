@@ -11,7 +11,10 @@ import type { SectionStyle } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { getSectionDef } from "@/sections/registry";
 
+import { GettingStarted } from "@/components/sites/getting-started";
+
 import { findBlock, isChromeId, ops } from "./doc-ops";
+import { useEditorActions, useEditorMeta } from "./editor-meta";
 import { FieldInput } from "./field-input";
 import { useEditor } from "./store";
 import { useSectionActions } from "./use-section-actions";
@@ -44,12 +47,15 @@ export function Inspector() {
 
   if (!selectedId || !block) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        <MousePointerClickIcon className="size-8 text-muted-foreground" aria-hidden />
-        <p className="font-medium">Select a section to edit it</p>
-        <p className="text-sm text-muted-foreground">
-          Click a section in the preview or in the list on the left.
-        </p>
+      <div className="flex h-full flex-col gap-6 overflow-y-auto p-4">
+        <EditorChecklist />
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-2 text-center">
+          <MousePointerClickIcon className="size-8 text-muted-foreground" aria-hidden />
+          <p className="font-medium">Select a section to edit it</p>
+          <p className="text-sm text-muted-foreground">
+            Click a section in the preview or in the list on the left.
+          </p>
+        </div>
       </div>
     );
   }
@@ -225,5 +231,45 @@ export function Inspector() {
         </div>
       )}
     </div>
+  );
+}
+
+function EditorChecklist() {
+  const { site, checklist } = useEditorMeta();
+  const { openPublish, navigate } = useEditorActions();
+  // Editing anything here counts, without waiting for the page to reload.
+  const editedHere = useEditor((state) => state.past.length > 0);
+  if (!checklist) return null;
+  const items = checklist.items.map((item) =>
+    item.id === "homepage" && editedHere ? { ...item, done: true } : item,
+  );
+  return (
+    <GettingStarted
+      compact
+      siteId={site.id}
+      items={items}
+      actions={{
+        homepage: (
+          <p className="text-xs text-muted-foreground">
+            Tip: click the big headline in the preview.
+          </p>
+        ),
+        contact: (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-fit"
+            onClick={() => navigate(`/dashboard/sites/${site.id}/settings`)}
+          >
+            Add details
+          </Button>
+        ),
+        publish: (
+          <Button size="sm" variant="outline" className="w-fit" onClick={openPublish}>
+            Publish
+          </Button>
+        ),
+      }}
+    />
   );
 }

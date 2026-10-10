@@ -31,6 +31,16 @@ export const createSiteSchema = z.object({
   name: siteName,
   kind: siteKind,
   subdomain: subdomainSchema,
+  tagline: z
+    .string()
+    .trim()
+    .max(120, "Keep the tagline under 120 characters.")
+    .optional()
+    .default(""),
+  /** A template id from src/templates, or null to start with a single homepage. */
+  templateId: z.string().max(60).nullable().optional().default(null),
+  /** A theme preset id; overrides the template's own style when set. */
+  preset: z.string().max(40).nullable().optional().default(null),
 });
 
 const optionalText = (max: number, message: string) =>

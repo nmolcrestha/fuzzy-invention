@@ -7,7 +7,10 @@ import { db } from "@/db";
 import { pages, pageSections, sections, sites } from "@/db/schema";
 import { requireUser } from "@/lib/session";
 import { subdomainProblem } from "@/lib/slug";
-import { newSectionBlock } from "@/sections/registry";
+import type { SectionBlock } from "@/sections/registry";
+import { normalizeTheme, THEME_PRESETS } from "@/sections/theme";
+import { getTemplate } from "@/templates/definitions";
+import { materializeBlank, materializeTemplate } from "@/templates/materialize";
 import { logActivity } from "@/server/activity";
 import {
   type ActionResult,
@@ -62,60 +65,93 @@ export async function checkSubdomain(
 
 export async function createSite(
   input: CreateSiteInput,
-): Promise<ActionResult<{ siteId: string }>> {
+): Promise<ActionResult<{ siteId: string; homePageId: string }>> {
   const me = await requireUser();
   const parsed = createSiteSchema.safeParse(input);
   if (!parsed.success) return fromZodError(parsed.error);
-  const { name, kind, subdomain } = parsed.data;
+  const { name, kind, subdomain, tagline, templateId, preset } = parsed.data;
+
+  const template = templateId ? getTemplate(templateId) : undefined;
+  if (templateId && !template)
+    return fail("That template isn't available any more. Please pick another one.");
+  const presetTheme = preset ? THEME_PRESETS.find((item) => item.id === preset) : undefined;
+
+  const site = template
+    ? materializeTemplate(template, { name, tagline })
+    : materializeBlank({ name, tagline }, preset ?? undefined);
+  const theme = presetTheme
+    ? normalizeTheme({ ...presetTheme.theme, preset: presetTheme.id })
+    : site.theme;
+  const toStored = ({ type, variant, schemaVersion, data, style }: SectionBlock) => ({
+    type,
+    variant,
+    schemaVersion,
+    data,
+    style,
+  });
 
   if (await isSubdomainTaken(subdomain))
     return fail(SUBDOMAIN_TAKEN, { subdomain: SUBDOMAIN_TAKEN });
 
   try {
-    const siteId = await db.transaction(async (tx) => {
-      const [site] = await tx
+    const { siteId, homePageId } = await db.transaction(async (tx) => {
+      let homeId = "";
+      const [created] = await tx
         .insert(sites)
-        .values({ ownerId: me.id, name, kind, subdomain })
+        .values({
+          ownerId: me.id,
+          name,
+          kind,
+          subdomain,
+          templateKey: template?.id ?? null,
+          theme,
+          header: toStored(site.header),
+          footer: toStored(site.footer),
+        })
         .returning({ id: sites.id });
+      const newSiteId = created!.id;
 
-      const [home] = await tx
-        .insert(pages)
-        .values({ siteId: site!.id, title: "Home", path: "/", isHome: true, position: 0 })
-        .returning({ id: pages.id });
-
-      // Start the homepage with a hero so the editor never opens on a blank page.
-      const hero = newSectionBlock("hero");
-      await tx.insert(sections).values({
-        id: hero.id,
-        siteId: site!.id,
-        type: hero.type,
-        variant: hero.variant,
-        schemaVersion: hero.schemaVersion,
-        data: { ...hero.data, heading: `Welcome to ${name}` },
-        style: hero.style,
-      });
-      await tx.insert(pageSections).values({ pageId: home!.id, sectionId: hero.id, position: 0 });
+      for (const [position, page] of site.pages.entries()) {
+        const [row] = await tx
+          .insert(pages)
+          .values({
+            siteId: newSiteId,
+            title: page.title,
+            path: page.path,
+            isHome: page.isHome,
+            showInNav: page.showInNav,
+            position,
+          })
+          .returning({ id: pages.id });
+        if (page.isHome) homeId = row!.id;
+        if (page.blocks.length > 0) {
+          await tx
+            .insert(sections)
+            .values(
+              page.blocks.map((block) => ({ id: block.id, siteId: newSiteId, ...toStored(block) })),
+            );
+          await tx.insert(pageSections).values(
+            page.blocks.map((block, index) => ({
+              pageId: row!.id,
+              sectionId: block.id,
+              position: index,
+            })),
+          );
+        }
+      }
 
       await logActivity(tx, {
-        siteId: site!.id,
+        siteId: newSiteId,
         userId: me.id,
         action: "site.created",
         entityType: "site",
-        entityId: site!.id,
-        metadata: { name },
+        entityId: newSiteId,
+        metadata: { name, template: template?.name ?? null, pages: site.pages.length },
       });
-      await logActivity(tx, {
-        siteId: site!.id,
-        userId: me.id,
-        action: "page.created",
-        entityType: "page",
-        entityId: home!.id,
-        metadata: { title: "Home" },
-      });
-      return site!.id;
+      return { siteId: newSiteId, homePageId: homeId };
     });
 
-    return ok({ siteId });
+    return ok({ siteId, homePageId });
   } catch (error) {
     if (isUniqueViolation(error)) return fail(SUBDOMAIN_TAKEN, { subdomain: SUBDOMAIN_TAKEN });
     console.error("createSite failed", error);
@@ -232,6 +268,19 @@ export async function restoreSite(siteId: string): Promise<ActionResult> {
   });
 
   invalidateLiveSite(site.id, [site.subdomain]);
+  refresh();
+  return ok();
+}
+
+/** Hides the getting-started checklist for this site. */
+export async function dismissChecklist(siteId: string): Promise<ActionResult> {
+  const me = await requireUser();
+  const site = await findOwnedSite(me.id, siteId);
+  if (!site) return fail(NOT_FOUND);
+  await db
+    .update(sites)
+    .set({ settings: { ...site.settings, checklistDismissed: true } })
+    .where(eq(sites.id, site.id));
   refresh();
   return ok();
 }

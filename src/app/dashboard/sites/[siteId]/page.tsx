@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { PageManager } from "@/components/pages/page-manager";
-import { getMySiteOr404, listPages } from "@/server/sites/queries";
+import { getChecklist, getMySiteOr404, listPages } from "@/server/sites/queries";
 
 export async function generateMetadata({
   params,
@@ -13,13 +13,18 @@ export async function generateMetadata({
 
 export default async function SitePagesPage({ params }: PageProps<"/dashboard/sites/[siteId]">) {
   const { siteId } = await params;
-  const [site, pages] = await Promise.all([getMySiteOr404(siteId), listPages(siteId)]);
+  const [site, pages, checklist] = await Promise.all([
+    getMySiteOr404(siteId),
+    listPages(siteId),
+    getChecklist(siteId),
+  ]);
 
   return (
     <PageManager
       siteId={site.id}
       subdomain={site.subdomain}
       designChanged={site.designHasUnpublishedChanges || !site.publishedVersionId}
+      checklist={checklist}
       pages={pages.map((page) => ({
         id: page.id,
         title: page.title,

@@ -11,17 +11,44 @@ import {
   heroSection,
   textSection,
 } from "./defs";
+import {
+  contactSection,
+  gallerySection,
+  hoursSection,
+  logosSection,
+  menuSection,
+  pricingSection,
+  statsSection,
+  stepsSection,
+  teamSection,
+  testimonialsSection,
+  textImageSection,
+  videoSection,
+} from "./defs-more";
 import { dataSchema, defaults } from "./fields";
 import type { SectionDefinition } from "./types";
 
+// Order here is the order in the section picker (within each category).
 const ALL: SectionDefinition[] = [
   headerSection,
   footerSection,
   heroSection,
   featuresSection,
+  textImageSection,
+  stepsSection,
   textSection,
+  statsSection,
+  testimonialsSection,
+  logosSection,
+  teamSection,
   ctaSection,
+  pricingSection,
   faqSection,
+  gallerySection,
+  videoSection,
+  contactSection,
+  hoursSection,
+  menuSection,
 ];
 
 export const SECTION_DEFS: Record<string, SectionDefinition> = Object.fromEntries(

@@ -1,6 +1,7 @@
 import type { Fields } from "./fields";
 
-export type SectionCategory = "intro" | "content" | "social-proof" | "conversion" | "site";
+export type SectionCategory =
+  "intro" | "content" | "social-proof" | "conversion" | "media" | "contact" | "restaurant" | "site";
 
 /** Where a section type can be used: on pages, or as the site's header / footer. */
 export type SectionPlacement = "page" | "header" | "footer";
@@ -31,5 +32,8 @@ export const CATEGORY_LABELS: Record<SectionCategory, string> = {
   content: "Content",
   "social-proof": "Social proof",
   conversion: "Get people to act",
+  media: "Photos & video",
+  contact: "Contact & location",
+  restaurant: "Restaurants & cafés",
   site: "Site",
 };

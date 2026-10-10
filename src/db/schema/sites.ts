@@ -26,6 +26,8 @@ export type SiteSettings = {
   contactEmail?: string;
   phone?: string;
   address?: string;
+  /** The getting-started checklist was closed by the user. */
+  checklistDismissed?: boolean;
 };
 
 export type SectionStyle = {

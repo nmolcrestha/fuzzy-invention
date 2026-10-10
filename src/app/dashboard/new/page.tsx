@@ -2,13 +2,13 @@ import { ArrowLeftIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { NewSiteForm } from "@/components/sites/new-site-form";
+import { NewSiteWizard } from "@/components/sites/new-site-wizard";
 
 export const metadata: Metadata = { title: "New website" };
 
 export default function NewSitePage() {
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-8">
+    <div className="mx-auto w-full max-w-3xl space-y-8">
       <div className="space-y-2">
         <Link
           href="/dashboard"
@@ -19,10 +19,10 @@ export default function NewSitePage() {
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">Create a new website</h1>
         <p className="text-muted-foreground">
-          Three quick questions. Nothing goes live until you choose to publish.
+          Four quick steps. Nothing goes live until you choose to publish.
         </p>
       </div>
-      <NewSiteForm />
+      <NewSiteWizard />
     </div>
   );
 }

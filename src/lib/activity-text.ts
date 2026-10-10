@@ -6,7 +6,9 @@ const str = (value: unknown) => (typeof value === "string" ? value : "");
 export function describeActivity({ action, metadata: m }: Entry): string {
   switch (action) {
     case "site.created":
-      return `created the website “${str(m.name)}”`;
+      return m.template
+        ? `created the website “${str(m.name)}” from the ${str(m.template)} template`
+        : `created the website “${str(m.name)}”`;
     case "site.updated": {
       const changed = Array.isArray(m.changed) ? (m.changed as string[]) : [];
       if (m.from && m.to) return `changed the web address from ${str(m.from)} to ${str(m.to)}`;

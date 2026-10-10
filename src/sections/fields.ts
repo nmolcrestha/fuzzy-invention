@@ -177,7 +177,10 @@ export const f = {
       .loose() as unknown as z.ZodType<ListItem>;
     const max = opts.max ?? 12;
     const newItem = () => ({ ...defaults(opts.fields) });
-    const fallback = (opts.default ?? []).map((item) => ({ id: newId(), ...newItem(), ...item }));
+    // Parsing fills in defaults at every depth (e.g. dishes inside menu categories).
+    const fallback = (opts.default ?? []).map((item) =>
+      itemSchema.parse(withFreshIds({ ...newItem(), ...item, id: newId() })),
+    );
     return {
       kind: "list",
       ...opts,
@@ -209,9 +212,27 @@ export function defaults(fields: Fields): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(fields).map(([key, field]) => [
       key,
-      field.kind === "list"
-        ? field.default.map((item) => ({ ...structuredClone(item), id: newId() }))
-        : structuredClone(field.default),
+      withFreshIds(structuredClone(field.default)),
     ]),
   );
+}
+
+/**
+ * Gives every list item (at any depth) a new id. Used for new and duplicated content so React
+ * keys and drag handles never clash.
+ */
+export function withFreshIds<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      item && typeof item === "object" && "id" in item
+        ? { ...withFreshIds(item), id: newId() }
+        : withFreshIds(item),
+    ) as T;
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, inner]) => [key, withFreshIds(inner)]),
+    ) as T;
+  }
+  return value;
 }

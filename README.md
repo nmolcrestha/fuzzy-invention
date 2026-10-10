@@ -10,6 +10,7 @@ A section-based website builder for non-coders. See [`requirement.md`](./require
 pnpm install
 cp .env.example .env           # then fill in the values (see below)
 pnpm db:migrate                # create the tables
+pnpm db:seed                   # demo login: demo@example.com / demo12345
 pnpm dev                       # http://localhost:3000
 ```
 
@@ -33,6 +34,7 @@ pnpm dev                       # http://localhost:3000
 | `pnpm test`                                    | Unit tests (Vitest)                               |
 | `pnpm db:generate`                             | Create a migration after changing `src/db/schema` |
 | `pnpm db:migrate`                              | Apply migrations                                  |
+| `pnpm db:seed`                                 | Create/reset the local demo account (verified)    |
 | `pnpm db:studio`                               | Browse the database                               |
 
 ## Project structure
@@ -67,15 +69,17 @@ src/
 │   └── slug.ts            # web address & page URL rules (unit tested)
 ├── sections/              # section system (shared by editor preview & published sites)
 │   ├── fields.ts          # field DSL → editor form + Zod schema + defaults
-│   ├── defs.ts            # section types (schemas only, no React)
+│   ├── defs.ts, defs-more.ts # section types (schemas only, no React)
 │   ├── registry.ts        # lookup, normalize/validate blocks, header/footer defaults
-│   ├── components.tsx     # section React components (no hooks: render anywhere)
+│   ├── components*.tsx    # section React components (no hooks: render anywhere)
+│   ├── parts.tsx          # shared building blocks for section components
 │   ├── rich-text*.ts(x)   # Tiptap JSON allow-list + safe renderer
 │   ├── theme.ts           # theme presets, fonts, CSS variables, contrast checks
 │   ├── navigation.ts      # extra menu links & social profiles
 │   ├── snapshot.ts        # what a publish freezes (page & site-design versions)
 │   ├── checks.ts          # pre-publish checks
 │   └── site.css           # --sq-* theme tokens and website styles
+├── templates/             # starter sites (definitions + materialize into validated blocks)
 ├── server/
 │   ├── publish/           # publish summary, publishChanges, unpublishPage
 │   ├── live/              # cached loaders for published sites ('use cache' + tags)
