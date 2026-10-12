@@ -8,7 +8,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { mediaAssets, pageVersions, siteVersions } from "@/db/schema";
 import { env } from "@/env";
-import { isImageType, keyBelongsToSite, MAX_UPLOAD_BYTES } from "@/lib/media-rules";
+import { isImageType, isMediaType, keyBelongsToSite, maxBytesFor } from "@/lib/media-rules";
 import { requireUser } from "@/lib/session";
 import { type ActionResult, fail, NOT_FOUND, ok, UNEXPECTED } from "@/server/action-result";
 import { logActivity } from "@/server/activity";
@@ -41,6 +41,12 @@ const recordInput = z.object({
   fileName: z.string().min(1).max(200),
   width: z.number().int().positive().max(50_000).nullable(),
   height: z.number().int().positive().max(50_000).nullable(),
+  /** Videos: a still frame uploaded next to the video. */
+  posterUrl: z
+    .url({ protocol: /^https$/ })
+    .nullable()
+    .optional(),
+  durationSeconds: z.number().int().positive().max(86_400).nullable().optional(),
 });
 
 /**
@@ -53,7 +59,7 @@ export async function recordBlobUpload(
   const me = await requireUser();
   const parsed = recordInput.safeParse(input);
   if (!parsed.success || uploadMode !== "blob") return fail(UNEXPECTED);
-  const { siteId, url, fileName, width, height } = parsed.data;
+  const { siteId, url, fileName, width, height, posterUrl, durationSeconds } = parsed.data;
 
   const site = await findOwnedSite(me.id, siteId);
   if (!site) return fail(NOT_FOUND);
@@ -62,10 +68,17 @@ export async function recordBlobUpload(
     const blob = await head(url, { token: env.BLOB_READ_WRITE_TOKEN });
     if (
       !keyBelongsToSite(blob.pathname, site.id) ||
-      !isImageType(blob.contentType) ||
-      blob.size > MAX_UPLOAD_BYTES
+      !isMediaType(blob.contentType) ||
+      blob.size > maxBytesFor(blob.contentType)
     ) {
       return fail("That upload couldn't be added to your library.");
+    }
+    let poster: string | null = null;
+    if (posterUrl && blob.contentType.startsWith("video/")) {
+      const posterBlob = await head(posterUrl, { token: env.BLOB_READ_WRITE_TOKEN });
+      if (keyBelongsToSite(posterBlob.pathname, site.id) && isImageType(posterBlob.contentType)) {
+        poster = posterBlob.url;
+      }
     }
     const item = await recordAsset({
       siteId: site.id,
@@ -77,6 +90,8 @@ export async function recordBlobUpload(
       sizeBytes: blob.size,
       width,
       height,
+      posterUrl: poster,
+      durationSeconds: durationSeconds ?? null,
     });
     refresh();
     return ok(item);
@@ -169,6 +184,12 @@ export async function deleteMedia(assetId: string): Promise<ActionResult<{ remov
       await deleteStoredFile(asset).catch((error) =>
         console.error("Couldn't delete the stored file", asset.storageKey, error),
       );
+      if (asset.posterUrl) {
+        await deleteStoredFile({
+          storageKey: asset.storageKey.replace(/\.[a-z0-9]+$/i, "-poster.jpg"),
+          url: asset.posterUrl,
+        }).catch(() => undefined);
+      }
     }
 
     refresh();

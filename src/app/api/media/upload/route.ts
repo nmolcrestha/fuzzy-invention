@@ -3,12 +3,17 @@ import { NextResponse } from "next/server";
 
 import { env } from "@/env";
 import { auth } from "@/lib/auth";
-import { ALLOWED_IMAGE_TYPES, keyBelongsToSite, MAX_UPLOAD_BYTES } from "@/lib/media-rules";
+import {
+  ALLOWED_MEDIA_TYPES,
+  keyBelongsToSite,
+  MAX_IMAGE_BYTES,
+  MAX_VIDEO_BYTES,
+} from "@/lib/media-rules";
 import { findOwnedSite } from "@/server/sites/access";
 
 /**
  * Issues short-lived tokens for direct browser → Vercel Blob uploads (requirement MED-1).
- * The token only allows images up to 10 MB, under the site's own folder. The browser records the
+ * The token only allows images (10 MB) and videos (50 MB), under the site's own folder. The browser records the
  * finished upload with the `recordBlobUpload` server action.
  */
 export async function POST(request: Request): Promise<NextResponse> {
@@ -29,8 +34,8 @@ export async function POST(request: Request): Promise<NextResponse> {
         const site = await findOwnedSite(session.user.id, siteId);
         if (!site || !keyBelongsToSite(pathname, site.id)) throw new Error("Not allowed");
         return {
-          allowedContentTypes: ALLOWED_IMAGE_TYPES,
-          maximumSizeInBytes: MAX_UPLOAD_BYTES,
+          allowedContentTypes: ALLOWED_MEDIA_TYPES,
+          maximumSizeInBytes: /\.(mp4|webm)$/i.test(pathname) ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES,
           addRandomSuffix: true,
           validUntil: Date.now() + 10 * 60 * 1000,
         };

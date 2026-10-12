@@ -302,6 +302,73 @@ Top bar: Site ▸ Page switcher · Save status · Undo/Redo · Preview · Publis
 | RND-5 | Friendly 404 page per site; "Site not found" page for unknown subdomains                                                                                                | P0  |
 | RND-6 | Lighthouse ≥ 90 on Performance, Accessibility, SEO for template sites                                                                                                   | P1  |
 
+### 7.13 Section builder (Phase 6)
+
+Lets non-coders make their own sections: start from a goal, get a ready-made design, fill it in step by step, then rearrange content with drag and drop. It stays **structured** (core principle 2): users move and add content inside a fixed grid, and spacing, alignment and mobile layout stay automatic.
+
+Priorities in this table are for Phase 6: **P0** = needed for the phase to be done, **P1** = should have, **P2** = later.
+
+**The journey**
+
+| ID   | Requirement                                                                                                                                                                                                                      | P   |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| SB-1 | "Add section" offers **Build your own** next to the ready-made section types. It starts by asking for a goal: introduce your business, show client logos, show photos, play a video, show products or services, collect messages | P0  |
+| SB-2 | Each goal offers 3–4 **starting designs** (layout presets) for its section kind: image hero, video hero, logo carousel, image slider, gallery, text + media. Previews use the site's own name, colors and fonts                  | P0  |
+| SB-3 | A short **guided fill-in** after choosing: headline, supporting text, button (label + where it goes), then image or video. Each step shows an example and can be skipped. It ends in the normal editor                           | P0  |
+| SB-4 | Optional **background** step (see SB-10) and a one-time **phone preview** with "Columns stack on phones automatically"                                                                                                           | P1  |
+| SB-5 | Users can leave the journey at any step; what they filled in so far is kept, and the rest uses the preset's sample content                                                                                                       | P0  |
+| SB-6 | A finished section can be saved for reuse (existing saved sections, SEC-6)                                                                                                                                                       | P0  |
+
+**Backgrounds** (for built sections _and_ the existing section types; completes the "image" option of SEC-9)
+
+| ID    | Requirement                                                                                                                                                        | P   |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- |
+| SB-10 | Section background: none, theme color (plain / soft / brand / dark), gradient (from the theme's colors), image, or video                                           | P0  |
+| SB-11 | Image and video backgrounds get an **overlay** (dark, light or brand color) with a strength slider, and a focal point so phones crop around the important part     | P0  |
+| SB-12 | **Readability check:** text color switches automatically for dark/light backgrounds, and a warning appears when text over an image or video fails WCAG AA contrast | P0  |
+| SB-13 | Columns (SB-21) can have their own background: none, soft, brand color, image, or a card (surface + border)                                                        | P1  |
+
+**Layout and drag & drop**
+
+| ID    | Requirement                                                                                                                                                                                                      | P   |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| SB-20 | **"Customize layout"** on any built section switches from fill-in fields to the layout view. Presets and custom layouts use the same structure, so customizing never means starting over                         | P0  |
+| SB-21 | Fixed structure: **Section → Rows → Columns → Items**. Up to 4 columns per row, chosen from ready column splits (1, 1/2+1/2, 2/3+1/3, 1/3×3, 1/4×4); spacing and alignment come from a small scale, never pixels | P0  |
+| SB-22 | Drag and drop to reorder items, move them between columns and rows, and reorder rows, in the **structure panel** (outline), with move up/down buttons and full keyboard support                                  | P0  |
+| SB-23 | Drag and drop directly in the preview                                                                                                                                                                            | P2  |
+| SB-24 | Add, duplicate, hide and delete items and rows (undo toast, like sections)                                                                                                                                       | P0  |
+| SB-25 | **"Reset to the starting design"** keeps the content but restores the preset's layout                                                                                                                            | P1  |
+| SB-26 | Per item/column: horizontal alignment (start / center / end) and, for columns, vertical alignment. No other spacing or size knobs                                                                                | P0  |
+
+**Items** (the content users can place)
+
+| ID    | Requirement                                                                                                                                               | P   |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| SB-30 | Heading (level chosen automatically from the page outline; size small / medium / large), text (rich text, ED-3a), button or button pair, image, video     | P0  |
+| SB-31 | Logo strip / **logo carousel**, **image slider**, icon list, small stats, spacer, divider                                                                 | P0  |
+| SB-32 | Form (the contact form, FRM-1) and map as items                                                                                                           | P2  |
+| SB-33 | Every item edits through the same generated settings form as sections (one field DSL). Links use the existing link picker (pages, anchors, web addresses) | P0  |
+
+**Video and carousels**
+
+| ID    | Requirement                                                                                                                                                                                     | P   |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| SB-40 | Video uploads in the media library: MP4/WebM up to ~50 MB, with an automatic or chosen **poster image**. YouTube/Vimeo links keep working for video items (not for backgrounds)                 | P0  |
+| SB-41 | Background video plays **muted and looped**, never with sound; it shows the poster instead when the visitor prefers reduced motion or is on a small screen                                      | P0  |
+| SB-42 | Carousels and sliders: pause on hover and keyboard focus, a visible pause button, arrows and swipe, keyboard support, no autoplay faster than 5 seconds, all content reachable without autoplay | P0  |
+| SB-43 | Logo carousels fall back to a static grid when there are few logos or reduced motion is on                                                                                                      | P1  |
+
+**Mobile, guardrails and quality**
+
+| ID    | Requirement                                                                                                                                                                 | P   |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| SB-50 | Columns stack on phones automatically; per column: "hide on phones" and "show first on phones". Nothing else per device                                                     | P0  |
+| SB-51 | Limits: up to 6 rows per section, 4 columns per row, 12 items per column, 20 slides/logos per carousel. The UI says so before the limit is hit                              | P0  |
+| SB-52 | Pre-publish checks understand built sections: empty columns, buttons without a link, images without descriptions, missing video posters, poor contrast over backgrounds     | P0  |
+| SB-53 | Media below the fold loads lazily; images are resized for the screen; background videos are only loaded on screens that will play them. Template sites keep Lighthouse ≥ 90 | P0  |
+| SB-54 | Up to three subtle entrance effects (fade, rise, none), off when the visitor prefers reduced motion                                                                         | P2  |
+| SB-55 | AI help in the guided fill-in: "Write this headline for me" (connects to the post-MVP AI assistant)                                                                         | P2  |
+
 ---
 
 ## 8. UX requirements — "keep the user aware"
@@ -516,6 +583,41 @@ activity_log
 
 **Shared sections:** they're inlined into each page's snapshot at publish time. A live page only changes when that page is republished, which is why editing a shared section flags every page that uses it (SEC-8a).
 
+**Section builder (Phase 6).** Built sections are one new section type, `custom`, so they keep working with drafts, publishing, versions, saved sections and checks. Its `data` holds a validated layout tree instead of fixed fields:
+
+```ts
+// sections.data for type "custom" (Zod-validated, schemaVersion'd like every section)
+{
+  preset: "image-hero",            // starting design, used by "Reset to the starting design"
+  rows: [{
+    id, split: "2/3+1/3",          // one of the ready column splits
+    columns: [{
+      id, align: "start", valign: "center",
+      background?: ColumnBackground,
+      mobile: { hidden: false, first: false },
+      items: [{ id, kind: "heading" | "text" | "buttons" | "image" | "video" | "logos" | "slider" | "icons" | "stats" | "spacer" | "divider",
+                data: {...}, align?: "start" | "center" | "end", isHidden?: boolean }]
+    }]
+  }]
+}
+
+// sections.style (all section types) gains an optional backdrop. `background` stays the
+// color tone (it also decides the text colors), so existing content needed no migration.
+background?: "default" | "muted" | "primary" | "dark"
+backdrop?:
+  | { kind: "gradient", preset: "brand" | "soft" | "night" }          // made from the brand color
+  | { kind: "image", src, focal: { x, y }, overlay: { tone: "dark" | "light" | "brand", strength } }
+  | { kind: "video", src, poster, overlay: { tone, strength } }
+// The content's tone follows the backdrop: dark overlay → light text, light → dark text, brand → brand text.
+
+// media_assets gains video support
+kind            text   // "image" | "video"
+posterUrl       text null
+durationSeconds int  null
+```
+
+Old drafts and published snapshots have no `backdrop`, so they render exactly as before.
+
 ---
 
 ## 12. Templates (MVP)
@@ -618,7 +720,35 @@ Templates are stored as seed JSON (same shape as a site snapshot) and are **clon
   - Offline backup of unsaved edits in IndexedDB (non-functional requirement) · RND-6 (P1) Lighthouse audit of the templates
   - Vercel Blob uploads are built but only tested with local storage (no token yet)
 
-### Phase 6 — Post-MVP
+### Phase 6 — Section builder (≈3 weeks) ✅ done 2026-10-11
+
+Requirements: §7.13 (SB-\*). Started before the open MVP items above, at the user's request. Delivered in three steps, each usable on its own:
+
+- **6a — Backgrounds & video (≈1 week)**
+  - Video uploads with posters in the media library (SB-40)
+  - Rich backgrounds for every section type: gradient, image with focal point, video, overlay, readability check (SB-10–12, SB-41)
+  - Pre-publish checks for weak overlays and missing posters
+  - Built as: a separate `style.backdrop` (no migration, see §11). Posters are made in the browser from a frame of the video. Uploaded files are served with byte ranges so videos can seek. The readability check measures the image's brightness under the overlay and warns below 3:1
+- **6b — Guided "Build your own" (≈1 week)**
+  - The `custom` section type and its layout renderer (same component in the preview and on live sites)
+  - Goal → starting design → guided fill-in → background → phone preview (SB-1–6)
+  - Presets: image hero, video hero, logo carousel, image slider, gallery, text + media
+  - Items: heading, text, buttons, image, video, logo strip/carousel, slider, icon list, stats, spacer, divider (SB-30, SB-31, SB-42)
+  - Built as: "Build your own section" at the top of the section picker. Goals: introduce your business, show client logos, show photos, play a video, show products or services, collect messages (opens the contact form section). 12 starting designs. Leaving the journey part-way adds what was filled in, with Undo. Finishing switches the preview to phone once
+- **6c — Customize layout (≈1 week)**
+  - Rows, column splits, drag and drop in the structure panel with keyboard support, add/duplicate/hide/delete with undo (SB-20–26)
+  - Mobile options and limits (SB-50, SB-51); checks and performance work (SB-52, SB-53)
+  - Usability test with 3–5 non-coders before calling it done
+  - Built as: "Fill in" / "Customize layout" tabs in the settings panel. Items drag within and between columns, rows drag to reorder; every drag has a menu alternative ("Move up/down", "Move to…"). Changing to fewer columns moves content into the last column instead of deleting it
+  - End-to-end tests: `e2e/backgrounds.spec.ts`, `e2e/builder.spec.ts`, `e2e/layout.spec.ts`
+- **Done when:** a non-coder can create an image hero, a video hero and a logo carousel without help, rearrange their content, publish it, and the result looks right on a phone and scores ≥ 90 in Lighthouse.
+- **Still open from this phase:**
+  - The usability test with non-coders (needs real people)
+  - Lighthouse audit (SB-53, RND-6) and automatic image resizing: images are lazy-loaded, but served at their uploaded size
+  - SB-13 image backgrounds for columns (P1). Columns have none / soft / brand / card
+  - P2 items, as planned: drag and drop in the preview (SB-23), form and map items (SB-32), entrance effects (SB-54), AI help (SB-55)
+
+### Phase 7 — Post-MVP
 
 - Custom domains, teams & roles, AI copy assistant, analytics, blog/collections, billing
 
@@ -648,6 +778,10 @@ Templates are stored as seed JSON (same shape as a site snapshot) and are **clon
 | Per-page publishing leaves the live site inconsistent (nav links to an unpublished page; a new theme looks wrong on an older page) | Hide unpublished pages from live nav automatically; pre-publish checks flag links to unpublished pages; publish dialog offers "Select all changes"; preview always shows the draft design |
 | Vercel Blob costs/orphaned files                                                                                                   | Track every upload in `media_assets`; periodic cleanup job deletes blobs not referenced by drafts or retained versions                                                                    |
 | Autosave conflicts (two tabs)                                                                                                      | Optimistic concurrency via `updatedAt`/version column; show "Edited in another tab — reload" notice                                                                                       |
+| Section builder turns into a freeform canvas and overwhelms non-coders (Phase 6)                                                   | Fixed grid and spacing scale, a short item list, limits (SB-51); always start from a goal and a preset; "Reset to the starting design"; usability tests with real non-coders              |
+| Text over images and video becomes unreadable                                                                                      | Overlays by default, automatic text color, contrast warning in the editor and before publishing (SB-12, SB-52)                                                                            |
+| Background videos make sites slow and costly                                                                                       | Size limit, poster on phones and for reduced motion, load only when played (SB-41, SB-53); Blob usage tracked per site                                                                    |
+| Layout data changes break built sections                                                                                           | One `custom` type with `schemaVersion` and migrations; render tests for every preset                                                                                                      |
 
 ---
 
@@ -657,6 +791,9 @@ Templates are stored as seed JSON (same shape as a site snapshot) and are **clon
 2. Free vs paid plans at launch: limits on sites, pages or custom domains?
 3. Should restaurant menus become a reusable "collection" (edit once, show on several pages) in MVP or later?
 4. Will agencies building for clients be a target soon? This affects how early teams/roles arrive.
+5. Section builder (Phase 6): allow video uploads for everyone, or only YouTube/Vimeo links on free plans (storage cost)?
+6. Section builder: is drag and drop in the structure panel enough for the first version, or is dragging directly in the preview (SB-23) needed from the start?
+7. Section builder: which presets matter most per persona (e.g. restaurants: photo slider; SaaS: video hero and logo carousel)?
 
 ### Decided
 
@@ -670,15 +807,19 @@ Templates are stored as seed JSON (same shape as a site snapshot) and are **clon
 
 ## 17. Glossary
 
-| Term           | Meaning                                                                           |
-| -------------- | --------------------------------------------------------------------------------- |
-| Site           | One website owned by a user                                                       |
-| Page           | A single URL within a site                                                        |
-| Section type   | A pre-built block design defined in code (Hero, Pricing…)                         |
-| Section        | A section type filled with the user's content and placed on a page                |
-| Variant        | An alternative layout of the same section type                                    |
-| Shared section | A section saved to the library and linked to multiple pages                       |
-| Draft          | The version being edited; invisible to visitors                                   |
-| Publish        | Making a page's current draft (or the site design) live as a new version snapshot |
-| Site design    | Site-wide settings published together: theme, navigation, header/footer, logo     |
-| Theme          | Site-wide design tokens (colors, fonts, style)                                    |
+| Term            | Meaning                                                                           |
+| --------------- | --------------------------------------------------------------------------------- |
+| Site            | One website owned by a user                                                       |
+| Page            | A single URL within a site                                                        |
+| Section type    | A pre-built block design defined in code (Hero, Pricing…)                         |
+| Section         | A section type filled with the user's content and placed on a page                |
+| Variant         | An alternative layout of the same section type                                    |
+| Shared section  | A section saved to the library and linked to multiple pages                       |
+| Draft           | The version being edited; invisible to visitors                                   |
+| Publish         | Making a page's current draft (or the site design) live as a new version snapshot |
+| Site design     | Site-wide settings published together: theme, navigation, header/footer, logo     |
+| Theme           | Site-wide design tokens (colors, fonts, style)                                    |
+| Built section   | A section the user made with the section builder (type `custom`)                  |
+| Starting design | A preset layout a built section starts from (image hero, logo carousel…)          |
+| Row / Column    | The fixed grid inside a built section; columns stack on phones                    |
+| Item            | One piece of content in a column: heading, text, button, image, video, carousel…  |

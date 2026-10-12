@@ -25,6 +25,8 @@ import {
   textImageSection,
   videoSection,
 } from "./defs-more";
+import { backdropSchema } from "./backdrop";
+import { customSection } from "./custom";
 import { dataSchema, defaults } from "./fields";
 import { formSection } from "./form";
 import type { SectionDefinition } from "./types";
@@ -51,6 +53,7 @@ const ALL: SectionDefinition[] = [
   contactSection,
   hoursSection,
   menuSection,
+  customSection,
 ];
 
 export const SECTION_DEFS: Record<string, SectionDefinition> = Object.fromEntries(
@@ -58,7 +61,7 @@ export const SECTION_DEFS: Record<string, SectionDefinition> = Object.fromEntrie
 );
 
 /** Section types users can add to pages, in picker order. */
-export const PAGE_SECTION_TYPES = ALL.filter((def) => def.placement === "page");
+export const PAGE_SECTION_TYPES = ALL.filter((def) => def.placement === "page" && !def.hidden);
 
 export function getSectionDef(type: string): SectionDefinition | undefined {
   return SECTION_DEFS[type];
@@ -79,6 +82,7 @@ export type ChromeBlocks = { header: SectionBlock; footer: SectionBlock };
 
 export const sectionStyleSchema = z.object({
   background: z.enum(["default", "muted", "primary", "dark"]).catch("default").optional(),
+  backdrop: backdropSchema.optional().catch(undefined),
   spacing: z.enum(["compact", "normal", "spacious"]).catch("normal").optional(),
   anchorId: z
     .string()

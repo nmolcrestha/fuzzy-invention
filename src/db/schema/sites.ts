@@ -13,6 +13,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import type { Backdrop } from "@/sections/backdrop";
 import type { SiteNavigation } from "@/sections/navigation";
 import type { SiteTheme } from "@/sections/theme";
 
@@ -40,6 +41,8 @@ export type SiteSettings = {
 
 export type SectionStyle = {
   background?: "default" | "muted" | "primary" | "dark";
+  /** Gradient, image or video drawn over the background color (Phase 6). */
+  backdrop?: Backdrop;
   spacing?: "compact" | "normal" | "spacious";
   anchorId?: string;
 };
@@ -247,7 +250,7 @@ export const activityLog = pgTable(
   (table) => [index("activity_log_site_created_idx").on(table.siteId, table.createdAt)],
 );
 
-/** An uploaded image. Kept in storage while any published version still uses it. */
+/** An uploaded image or video. Kept in storage while any published version still uses it. */
 export const mediaAssets = pgTable(
   "media_assets",
   {
@@ -259,8 +262,12 @@ export const mediaAssets = pgTable(
     storageKey: text("storage_key").notNull().unique(),
     url: text("url").notNull(),
     fileName: text("file_name").notNull(),
+    kind: text("kind").$type<"image" | "video">().notNull().default("image"),
     mimeType: text("mime_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
+    /** Still image shown before a video plays (and instead of it on phones). */
+    posterUrl: text("poster_url"),
+    durationSeconds: integer("duration_seconds"),
     width: integer("width"),
     height: integer("height"),
     alt: text("alt").notNull().default(""),

@@ -109,3 +109,30 @@ export async function chooseFiles(page: Page, button: ReturnType<Page["getByRole
     await (await chooser).setFiles(files);
   }).toPass({ timeout: 20_000 });
 }
+
+/** Records a short WebM clip in the browser (canvas + MediaRecorder), so no binary fixtures. */
+export async function webmFile(page: Page, name = "clip.webm") {
+  const base64 = await page.evaluate(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 160;
+    canvas.height = 90;
+    const context = canvas.getContext("2d")!;
+    const recorder = new MediaRecorder(canvas.captureStream(15), { mimeType: "video/webm" });
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (event) => chunks.push(event.data);
+    recorder.start();
+    for (let frame = 0; frame < 20; frame++) {
+      context.fillStyle = `hsl(${frame * 18}, 70%, 45%)`;
+      context.fillRect(0, 0, 160, 90);
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    }
+    const stopped = new Promise((resolve) => (recorder.onstop = resolve));
+    recorder.stop();
+    await stopped;
+    const bytes = new Uint8Array(await new Blob(chunks).arrayBuffer());
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
+  });
+  return { name, mimeType: "video/webm", buffer: Buffer.from(base64, "base64") };
+}

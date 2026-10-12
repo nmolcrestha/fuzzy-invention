@@ -22,6 +22,7 @@ import { EditorActionsContext, EditorMetaContext } from "./editor-meta";
 import { Inspector } from "./inspector";
 import { Outline } from "./outline";
 import { PreviewFrame } from "./preview-frame";
+import { BuildSectionDialog } from "./build-section-dialog";
 import { SaveSectionDialog } from "./save-section-dialog";
 import { SaveStatus } from "./save-status";
 import { SectionPicker } from "./section-picker";
@@ -60,7 +61,13 @@ export function Editor({ data }: { data: EditorData }) {
     );
   }
   const { store } = instance;
-  const meta = { site: data.site, page: data.page, pages: data.pages, checklist: data.checklist };
+  const meta = {
+    site: data.site,
+    page: data.page,
+    pages: data.pages,
+    checklist: data.checklist,
+    theme: data.theme,
+  };
 
   return (
     <EditorMetaContext value={meta}>
@@ -92,6 +99,7 @@ function EditorShell({ data, store }: { data: EditorData; store: EditorStore }) 
   const status = useEditor((state) => state.status);
   const selectedId = useEditor((state) => state.selectedId);
   const [picker, setPicker] = useState<{ open: boolean; index: number }>({ open: false, index: 0 });
+  const [buildOpen, setBuildOpen] = useState(false);
   const [leaveTo, setLeaveTo] = useState<string | null>(null);
   const [panel, setPanel] = useState<"sections" | "settings" | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -213,6 +221,19 @@ function EditorShell({ data, store }: { data: EditorData; store: EditorStore }) 
             setPicker((current) => ({ ...current, open: false }));
           }}
           beforeRemove={saveBeforePublish}
+          onBuild={() => {
+            setPicker((current) => ({ ...current, open: false }));
+            setBuildOpen(true);
+          }}
+        />
+
+        <BuildSectionDialog
+          open={buildOpen}
+          onOpenChange={setBuildOpen}
+          site={data.siteContext}
+          theme={data.theme}
+          onBuilt={({ block, complete }) => actions.insertBuilt(block, picker.index, complete)}
+          onPickSection={(type) => actions.insert(type, picker.index)}
         />
 
         <SaveSectionDialog

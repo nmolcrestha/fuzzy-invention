@@ -22,15 +22,20 @@ import { MediaGrid } from "./media-grid";
 import { UploadZone } from "./upload-zone";
 import { type UploadMode, useUploads } from "./use-uploads";
 
+/** What was picked. Videos also carry their poster (still image). */
+export type MediaPick = ImageValue & { poster?: string };
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   siteId: string;
-  /** Called with the chosen image. */
-  onPick: (image: ImageValue) => void;
+  /** Called with the chosen image or video. */
+  onPick: (pick: MediaPick) => void;
   title?: string;
   /** Ask for a description (off for icons and social images, where it isn't shown). */
   withAlt?: boolean;
+  /** Images (default) or videos. Videos must be uploaded, so there's no "Paste a link". */
+  accept?: "image" | "video";
 };
 
 /** Pick an image from the site's library, upload a new one, or paste a link (MED-2). */
@@ -44,13 +49,9 @@ export function MediaPicker(props: Props) {
   );
 }
 
-function Picker({
-  onOpenChange,
-  siteId,
-  onPick,
-  title = "Choose an image",
-  withAlt = true,
-}: Props) {
+function Picker({ onOpenChange, siteId, onPick, title, withAlt = true, accept = "image" }: Props) {
+  const video = accept === "video";
+  const noun = video ? "video" : "image";
   const [tab, setTab] = useState<"library" | "link">("library");
   const [items, setItems] = useState<MediaItem[] | null>(null);
   const [mode, setMode] = useState<UploadMode>("local");
@@ -67,14 +68,14 @@ function Picker({
       if (cancelled) return;
       if (!result.ok) setError(result.error);
       else {
-        setItems(result.data.items);
+        setItems(result.data.items.filter((item) => item.kind === accept));
         setMode(result.data.uploadMode);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [siteId]);
+  }, [siteId, accept]);
 
   const select = (item: MediaItem) => {
     setSelected(item);
@@ -86,23 +87,29 @@ function Picker({
     setSelected(item);
     setAlt(item.alt);
   }, []);
-  const { uploads, uploadFiles, dismiss } = useUploads({ siteId, mode, onUploaded });
+  const { uploads, uploadFiles, dismiss } = useUploads({
+    siteId,
+    mode,
+    onUploaded,
+    accept,
+  });
 
   const linkValid = /^https?:\/\/\S+$/i.test(link.trim());
   const canUse = tab === "library" ? Boolean(selected) : linkValid;
 
   function use() {
-    if (tab === "library" && selected) onPick({ src: selected.url, alt: alt.trim() });
-    else if (tab === "link" && linkValid) onPick({ src: link.trim(), alt: alt.trim() });
+    if (tab === "library" && selected) {
+      onPick({ src: selected.url, alt: alt.trim(), poster: selected.posterUrl ?? undefined });
+    } else if (tab === "link" && linkValid) onPick({ src: link.trim(), alt: alt.trim() });
     onOpenChange(false);
   }
 
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{title}</DialogTitle>
+        <DialogTitle>{title ?? `Choose ${video ? "a video" : "an image"}`}</DialogTitle>
         <DialogDescription>
-          Upload a new image or pick one you&apos;ve already uploaded.
+          Upload a new {noun} or pick one you&apos;ve already uploaded.
         </DialogDescription>
       </DialogHeader>
 
@@ -113,27 +120,35 @@ function Picker({
       >
         {(
           [
-            ["library", "Your images", ImageIcon],
+            ["library", video ? "Your videos" : "Your images", ImageIcon],
             ["link", "Paste a link", Link2Icon],
           ] as const
-        ).map(([id, label, Icon]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground aria-selected:bg-background aria-selected:text-foreground aria-selected:shadow-sm"
-          >
-            <Icon className="size-4" aria-hidden />
-            {label}
-          </button>
-        ))}
+        )
+          .filter(([id]) => !video || id === "library")
+          .map(([id, label, Icon]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground aria-selected:bg-background aria-selected:text-foreground aria-selected:shadow-sm"
+            >
+              <Icon className="size-4" aria-hidden />
+              {label}
+            </button>
+          ))}
       </div>
 
       {tab === "library" ? (
         <div className="grid gap-4">
-          <UploadZone compact onFiles={uploadFiles} uploads={uploads} onDismiss={dismiss} />
+          <UploadZone
+            compact
+            accept={accept}
+            onFiles={uploadFiles}
+            uploads={uploads}
+            onDismiss={dismiss}
+          />
           {error ? (
             <p role="alert" className="text-sm text-destructive">
               {error}
@@ -145,14 +160,14 @@ function Picker({
             </p>
           ) : items.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              You haven&apos;t uploaded any images yet. Your uploads will appear here.
+              You haven&apos;t uploaded any {noun}s yet. Your uploads will appear here.
             </p>
           ) : (
             <MediaGrid
               items={items}
               selectedId={selected?.id ?? null}
               onSelect={select}
-              label="Your images"
+              label={video ? "Your videos" : "Your images"}
             />
           )}
         </div>
@@ -176,7 +191,7 @@ function Picker({
 
       {withAlt && canUse && (
         <div className="grid gap-2">
-          <Label htmlFor={altId}>Describe the image</Label>
+          <Label htmlFor={altId}>Describe the {noun}</Label>
           <Input
             id={altId}
             value={alt}
@@ -203,7 +218,7 @@ function Picker({
           Cancel
         </Button>
         <Button onClick={use} disabled={!canUse}>
-          Use this image
+          Use this {noun}
         </Button>
       </DialogFooter>
     </>

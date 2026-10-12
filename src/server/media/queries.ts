@@ -14,7 +14,7 @@ import {
   sites,
   siteVersions,
 } from "@/db/schema";
-import type { ImageType } from "@/lib/media-rules";
+import { type MediaType, mediaKind } from "@/lib/media-rules";
 import { usesImage, withoutImage } from "@/sections/media-refs";
 import { getSectionDef } from "@/sections/registry";
 import { logActivity } from "@/server/activity";
@@ -25,10 +25,13 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 /** What the media library and image pickers show. Safe to send to the browser. */
 export type MediaItem = {
   id: string;
+  kind: "image" | "video";
   url: string;
   fileName: string;
   mimeType: string;
   sizeBytes: number;
+  posterUrl: string | null;
+  durationSeconds: number | null;
   width: number | null;
   height: number | null;
   alt: string;
@@ -38,10 +41,13 @@ export type MediaItem = {
 export function toMediaItem(asset: MediaAsset): MediaItem {
   return {
     id: asset.id,
+    kind: asset.kind,
     url: asset.url,
     fileName: asset.fileName,
     mimeType: asset.mimeType,
     sizeBytes: asset.sizeBytes,
+    posterUrl: asset.posterUrl,
+    durationSeconds: asset.durationSeconds,
     width: asset.width,
     height: asset.height,
     alt: asset.alt,
@@ -79,10 +85,12 @@ export async function recordAsset(entry: {
   storageKey: string;
   url: string;
   fileName: string;
-  mimeType: ImageType;
+  mimeType: MediaType;
   sizeBytes: number;
   width: number | null;
   height: number | null;
+  posterUrl?: string | null;
+  durationSeconds?: number | null;
 }): Promise<MediaItem> {
   return db.transaction(async (tx) => {
     const [created] = await tx
@@ -92,8 +100,11 @@ export async function recordAsset(entry: {
         storageKey: entry.storageKey,
         url: entry.url,
         fileName: entry.fileName.slice(0, 200),
+        kind: mediaKind(entry.mimeType),
         mimeType: entry.mimeType,
         sizeBytes: entry.sizeBytes,
+        posterUrl: entry.posterUrl ?? null,
+        durationSeconds: entry.durationSeconds ?? null,
         width: entry.width,
         height: entry.height,
         uploadedBy: entry.userId,

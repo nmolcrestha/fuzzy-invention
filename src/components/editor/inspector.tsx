@@ -17,27 +17,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { SectionStyle } from "@/db/schema";
-import { cn } from "@/lib/utils";
 import { getSectionDef } from "@/sections/registry";
 
 import { GettingStarted } from "@/components/sites/getting-started";
 
+import { sectionDisplayName } from "@/sections/presets";
+
+import { BackgroundPicker } from "./background-picker";
+import { LayoutEditor } from "./layout-editor";
 import { findBlock, isChromeId, ops } from "./doc-ops";
 import { useEditorActions, useEditorMeta } from "./editor-meta";
 import { FieldInput } from "./field-input";
 import { useEditor } from "./store";
 import { useSectionActions } from "./use-section-actions";
-
-const BACKGROUNDS: {
-  value: NonNullable<SectionStyle["background"]>;
-  label: string;
-  swatch: string;
-}[] = [
-  { value: "default", label: "Plain", swatch: "bg-white" },
-  { value: "muted", label: "Soft", swatch: "bg-zinc-100" },
-  { value: "primary", label: "Brand color", swatch: "bg-indigo-600" },
-  { value: "dark", label: "Dark", swatch: "bg-zinc-950" },
-];
 
 const SPACINGS: { value: NonNullable<SectionStyle["spacing"]>; label: string }[] = [
   { value: "compact", label: "Compact" },
@@ -56,7 +48,7 @@ export function Inspector() {
   );
   const actions = useSectionActions();
   const { saveForReuse } = useEditorActions();
-  const { page } = useEditorMeta();
+  const { page, site, theme } = useEditorMeta();
   const anchorId = useId();
 
   if (!selectedId || !block) {
@@ -83,7 +75,7 @@ export function Inspector() {
     <div className="flex h-full flex-col">
       <div className="border-b p-4">
         <div className="flex items-center gap-2">
-          <h2 className="font-semibold">{def.name}</h2>
+          <h2 className="font-semibold">{sectionDisplayName(block, def.name)}</h2>
           {chrome && (
             <Badge variant="secondary" className="gap-1">
               <GlobeIcon className="size-3" aria-hidden />
@@ -144,52 +136,42 @@ export function Inspector() {
 
         <section className="grid gap-5" aria-label="Content">
           <h3 className="text-sm font-medium text-muted-foreground">Content</h3>
-          {visibleFields.map((key) => {
-            const field = def.fields[key];
-            if (!field) return null;
-            return (
-              <FieldInput
-                key={`${block.id}:${key}`}
-                field={field}
-                value={block.data[key]}
-                onChange={(value, options) =>
-                  change(
-                    (doc) => ops.setField(doc, block.id, [key], value),
-                    options?.coalesce ? `${block.id}:${key}` : undefined,
-                  )
-                }
-              />
-            );
-          })}
+          {block.type === "custom" && <LayoutEditor key={block.id} block={block} />}
+          {block.type !== "custom" &&
+            visibleFields.map((key) => {
+              const field = def.fields[key];
+              if (!field) return null;
+              return (
+                <FieldInput
+                  key={`${block.id}:${key}`}
+                  field={field}
+                  value={block.data[key]}
+                  onChange={(value, options) =>
+                    change(
+                      (doc) => ops.setField(doc, block.id, [key], value),
+                      options?.coalesce ? `${block.id}:${key}` : undefined,
+                    )
+                  }
+                />
+              );
+            })}
         </section>
 
         <section className="grid gap-4" aria-label="Style">
           <h3 className="text-sm font-medium text-muted-foreground">Style</h3>
-          <fieldset>
-            <legend className="mb-2 text-sm font-medium">Background</legend>
-            <div role="radiogroup" className="grid grid-cols-4 gap-2">
-              {BACKGROUNDS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={(block.style.background ?? "default") === option.value}
-                  onClick={() =>
-                    change((doc) => ops.setStyle(doc, block.id, { background: option.value }))
-                  }
-                  className="group grid justify-items-center gap-1 text-xs"
-                >
-                  <span
-                    className={cn(
-                      "size-9 rounded-full border-2 border-border ring-offset-2 group-aria-checked:ring-2 group-aria-checked:ring-primary",
-                      option.swatch,
-                    )}
-                  />
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
+          <BackgroundPicker
+            key={block.id}
+            style={block.style}
+            siteId={site.id}
+            primary={theme.primary}
+            chrome={chrome}
+            onChange={(patch, coalesce) =>
+              change(
+                (doc) => ops.setStyle(doc, block.id, patch),
+                coalesce ? `${block.id}:${coalesce}` : undefined,
+              )
+            }
+          />
 
           {!chrome && (
             <>

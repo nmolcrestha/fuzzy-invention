@@ -7,13 +7,13 @@ test("upload, describe, use and delete an image", async ({ page }) => {
 
   // Upload in the Media tab: a single upload asks for a description right away (MED-3).
   await page.goto(`/dashboard/sites/${site.id}/media`);
-  const choose = page.getByRole("button", { name: "Choose images" });
+  const choose = page.getByRole("button", { name: "Choose files" });
   await chooseFiles(page, choose, pngFile("team.png"));
   const describe = page.getByRole("dialog", { name: "Describe your image" });
   await describe.getByLabel("Image description").fill("Our team at work");
   await describe.getByRole("button", { name: "Save description" }).click();
   await expect(describe).toBeHidden();
-  const library = page.getByRole("list", { name: "Your images" });
+  const library = page.getByRole("list", { name: "Your images and videos" });
   await expect(library.getByRole("button")).toHaveCount(1);
   await expect(library.getByText("No description")).toHaveCount(0);
 
@@ -23,7 +23,7 @@ test("upload, describe, use and delete an image", async ({ page }) => {
     mimeType: "text/plain",
     buffer: Buffer.from("hi"),
   });
-  await expect(page.getByText("“notes.txt” isn't a supported image")).toBeVisible();
+  await expect(page.getByText("“notes.txt” isn't a supported image or video")).toBeVisible();
   await chooseFiles(page, choose, {
     name: "fake.png",
     mimeType: "image/png",

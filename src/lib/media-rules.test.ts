@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   formatBytes,
+  formatDuration,
+  MAX_VIDEO_BYTES,
+  sniffMediaType,
   keyBelongsToSite,
   MAX_UPLOAD_BYTES,
   sniffImageType,
@@ -63,5 +66,32 @@ describe("formatBytes", () => {
     expect(formatBytes(2048)).toBe("2 KB");
     expect(formatBytes(1.5 * 1024 * 1024)).toBe("1.5 MB");
     expect(formatBytes(10 * 1024 * 1024)).toBe("10 MB");
+  });
+});
+
+describe("videos", () => {
+  it("are accepted where videos are allowed, with their own size limit", () => {
+    const video = { name: "intro.mp4", type: "video/mp4", size: 20 * 1024 * 1024 };
+    expect(uploadProblem(video, "video")).toBeNull();
+    expect(uploadProblem(video, "any")).toBeNull();
+    expect(uploadProblem(video)).toContain("isn't a supported image");
+    expect(uploadProblem({ ...video, size: MAX_VIDEO_BYTES + 1 }, "any")).toContain(
+      "Videos can be up to 50 MB",
+    );
+    expect(uploadPathname(SITE, "Intro Film.MP4", "video/mp4")).toBe(
+      `sites/${SITE}/intro-film.mp4`,
+    );
+  });
+
+  it("are recognized by their first bytes", () => {
+    const mp4 = new Uint8Array([0, 0, 0, 0x18, ...new TextEncoder().encode("ftypisom")]);
+    expect(sniffMediaType(mp4)).toBe("video/mp4");
+    expect(sniffMediaType(new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0x01]))).toBe("video/webm");
+    expect(sniffMediaType(new TextEncoder().encode("not a video"))).toBeNull();
+  });
+
+  it("show their length as minutes and seconds", () => {
+    expect(formatDuration(5)).toBe("0:05");
+    expect(formatDuration(83)).toBe("1:23");
   });
 });

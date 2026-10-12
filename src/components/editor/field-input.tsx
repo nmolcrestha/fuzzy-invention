@@ -11,13 +11,14 @@ import {
 import { useId, useState } from "react";
 
 import { ImagePickerField } from "@/components/media/image-picker-field";
+import { VideoPickerField } from "@/components/media/video-picker-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { Field, ImageValue, LinkValue, ListItem } from "@/sections/fields";
+import type { Field, ImageValue, LinkValue, ListItem, VideoValue } from "@/sections/fields";
 import { fieldIsEmpty } from "@/sections/checks";
 import { ICONS } from "@/sections/icon-map";
 import { ICON_NAMES, type IconName } from "@/sections/icons";
@@ -55,6 +56,9 @@ export function FieldInput({ field, value, onChange }: FieldInputProps) {
   if (field.kind === "list") {
     return <ListInput field={field} value={value as ListItem[]} onChange={onChange} />;
   }
+
+  // Built sections have their own editor (see layout-editor.tsx).
+  if (field.kind === "layout") return null;
 
   return (
     <div className="grid gap-2">
@@ -172,6 +176,17 @@ function Control({
         />
       );
 
+    case "video":
+      return (
+        <VideoInput
+          id={id}
+          helpId={helpId}
+          label={field.label}
+          value={value as VideoValue}
+          onChange={onChange}
+        />
+      );
+
     case "link":
       return <LinkInput id={id} value={value as LinkValue} onChange={onChange} />;
 
@@ -260,6 +275,33 @@ function ImageInput({
       value={value}
       describedBy={helpId}
       label={label}
+      onChange={(next) => onChange(next)}
+      onAltChange={(alt) => onChange({ ...value, alt }, { coalesce: true })}
+    />
+  );
+}
+
+function VideoInput({
+  id,
+  helpId,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  helpId: string;
+  label: string;
+  value: VideoValue;
+  onChange: FieldChange;
+}) {
+  const { site } = useEditorMeta();
+  return (
+    <VideoPickerField
+      id={id}
+      siteId={site.id}
+      value={value}
+      label={label}
+      describedBy={helpId}
       onChange={(next) => onChange(next)}
       onAltChange={(alt) => onChange({ ...value, alt }, { coalesce: true })}
     />

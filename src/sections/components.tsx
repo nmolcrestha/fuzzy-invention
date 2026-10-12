@@ -15,6 +15,7 @@ import type {
 } from "./defs";
 import { ICONS } from "./icon-map";
 import { MORE_SECTION_COMPONENTS } from "./components-more";
+import { CustomSection } from "./custom-view";
 import { ContactForm } from "./form-view";
 import { richTextIsEmpty } from "./rich-text";
 import { RichTextView } from "./rich-text-view";
@@ -326,6 +327,7 @@ export const SECTION_COMPONENTS: Record<string, ComponentType<SectionProps<any>>
   header: Header,
   footer: Footer,
   form: ContactForm,
+  custom: CustomSection,
   hero: Hero,
   features: Features,
   cta: Cta,

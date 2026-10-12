@@ -16,15 +16,15 @@ pnpm dev                       # http://localhost:3000
 
 ### Environment
 
-| Variable                                    | Required | Notes                                                                                |
-| ------------------------------------------- | -------- | ------------------------------------------------------------------------------------ |
-| `DATABASE_URL`                              | ✅       | Any Postgres. Run `docker compose up -d` for a local one on port **5433**            |
-| `BETTER_AUTH_SECRET`                        | ✅       | `openssl rand -base64 32`                                                            |
-| `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL`   | ✅       | `http://localhost:3000` locally                                                      |
-| `NEXT_PUBLIC_ROOT_DOMAIN`                   | ✅       | Sites live at `<subdomain>.<root domain>`. `localhost:3000` locally                  |
-| `RESEND_API_KEY`                            | –        | Without it, verification and reset emails are **printed to the dev server console**  |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | –        | Shows "Continue with Google" when both are set                                       |
-| `BLOB_READ_WRITE_TOKEN`                     | –        | Vercel Blob. Without it, uploads are saved to `.data/uploads` and served at `/media` |
+| Variable                                    | Required | Notes                                                                                                                         |
+| ------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                              | ✅       | Any Postgres. Run `docker compose up -d` for a local one on port **5433**                                                     |
+| `BETTER_AUTH_SECRET`                        | ✅       | `openssl rand -base64 32`                                                                                                     |
+| `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL`   | ✅       | `http://localhost:3000` locally                                                                                               |
+| `NEXT_PUBLIC_ROOT_DOMAIN`                   | ✅       | Sites live at `<subdomain>.<root domain>`. `localhost:3000` locally                                                           |
+| `RESEND_API_KEY`                            | –        | Without it, verification and reset emails are **printed to the dev server console**                                           |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | –        | Shows "Continue with Google" when both are set                                                                                |
+| `BLOB_READ_WRITE_TOKEN`                     | –        | Vercel Blob (images up to 10 MB, videos up to 50 MB). Without it, uploads are saved to `.data/uploads` and served at `/media` |
 
 ## Scripts
 
@@ -60,7 +60,8 @@ src/
 ├── components/
 │   ├── auth/              # auth forms
 │   ├── dashboard/         # sidebar, user menu
-│   ├── editor/            # visual editor: store, autosave, outline, inspector, preview bridge
+│   ├── editor/            # visual editor: store, autosave, outline, inspector, preview bridge,
+│   │                      #   background picker, "Build your own" dialog, layout editor (drag & drop)
 │   ├── forms/             # messages inbox
 │   ├── media/             # media library, uploads, image picker
 │   ├── pages/             # page manager, page settings dialog (name, address, search & social)
@@ -88,6 +89,13 @@ src/
 │   ├── theme.ts           # theme presets, fonts, CSS variables, contrast checks
 │   ├── navigation.ts      # extra menu links & social profiles
 │   ├── form*.ts(x)        # contact form section + submission validation
+│   ├── backdrop*.ts(x)    # section backgrounds: gradient, image, video, overlay, readability
+│   ├── custom*.ts(x)      # "Build your own" section type and its renderer
+│   ├── layout.ts          # built sections: rows → columns → items, splits, limits, schema
+│   ├── layout-ops.ts      # pure layout edits (move, split, duplicate, reset; unit tested)
+│   ├── items.ts           # item kinds (heading, text, buttons, image, video, logos, slider…)
+│   ├── presets.ts         # goals and starting designs for "Build your own"
+│   ├── image-slider.tsx, logo-marquee.tsx # accessible slider and logo carousel (client)
 │   ├── seo.ts             # search titles/descriptions, SEO checks
 │   ├── media-refs.ts      # find/remove an image inside stored content
 │   ├── snapshot.ts        # what a publish freezes (page & site-design versions)
@@ -114,7 +122,7 @@ src/
 
 ## End-to-end tests
 
-`e2e/` holds Playwright suites (core editor, media, SEO & redirects, forms, saved sections, versions). They run against a production build with the demo account:
+`e2e/` holds Playwright suites (core editor, media, SEO & redirects, forms, saved sections, versions, backgrounds, "Build your own", customize layout). They run against a production build with the demo account:
 
 ```bash
 pnpm build && pnpm db:seed
@@ -140,4 +148,6 @@ Published sites are served at `http://<subdomain>.localhost:3000`. Chrome, Edge 
 - **Soft deletes.** Sites and pages have `deletedAt`. Sites can be restored for 30 days. Deleted pages can be undone from the toast.
 - **Shared (saved) sections** are one `sections` row placed on several pages. Saves send each shared section's `revision` and whether it was edited; only edited ones are written, and a stale revision returns a conflict. Editing one marks every other page that uses it as changed.
 - **Uploads** go through `src/server/media`. Every file is recorded in `media_assets`. Deleting an image removes it from drafts; the file itself is kept while any published version still references it.
+- **Built sections** are one section type (`custom`) whose `data.layout` is a validated tree: rows (fixed column splits) → columns → items. Item kinds are defined with the same field DSL as sections. Edit layouts only through `layoutOps`, which keeps limits and never drops content.
+- **Backgrounds:** `style.background` is the color tone; `style.backdrop` (gradient, image, video) is drawn on top, and `effectiveTone()` decides the text colors from its overlay. Header and footer only use plain colors.
 - **Contact forms** only accept messages for forms on published pages, validated against the published snapshot. Notification emails are sent with `after()`.

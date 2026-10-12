@@ -3,7 +3,7 @@
 import { toast } from "sonner";
 
 import { withFreshIds } from "@/sections/fields";
-import { getSectionDef } from "@/sections/registry";
+import { getSectionDef, type SectionBlock } from "@/sections/registry";
 import type { LibraryItem } from "@/server/library/queries";
 
 import { ops } from "./doc-ops";
@@ -85,6 +85,32 @@ export function useSectionActions() {
 
     move(from: number, to: number) {
       change((doc) => ops.move(doc, from, to));
+    },
+
+    /** Adds a section made with "Build your own" (SB-3 to SB-5). */
+    insertBuilt(block: SectionBlock, index: number, complete: boolean) {
+      change((doc) => ops.insertBlock(doc, block, index));
+      select(block.id);
+      setTimeout(() => requestScroll(block.id), 50);
+      if (complete) {
+        // A one-time look at the phone version (SB-4).
+        store.getState().setDevice("mobile");
+        toast("This is how it looks on phones: columns stack automatically.", {
+          duration: UNDO_MS,
+          action: {
+            label: "Back to desktop",
+            onClick: () => store.getState().setDevice("desktop"),
+          },
+        });
+      } else {
+        toast("Added the section with what you filled in. Finish it in the settings panel.", {
+          duration: UNDO_MS,
+          action: {
+            label: "Undo",
+            onClick: () => change((doc) => ops.remove(doc, block.id)),
+          },
+        });
+      }
     },
 
     /** Adds a saved section that stays in sync everywhere it's used (SEC-7 "Link"). */

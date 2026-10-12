@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { formatBytes } from "@/lib/media-rules";
+import { formatBytes, formatDuration } from "@/lib/media-rules";
 import { checkMediaUsage, deleteMedia, updateMediaAlt } from "@/server/media/actions";
 import type { MediaItem, MediaUsage } from "@/server/media/queries";
 
@@ -68,6 +68,7 @@ function Details({
   justUploaded: boolean;
 }) {
   const altId = useId();
+  const noun = item.kind === "video" ? "video" : "image";
   const [alt, setAlt] = useState(item.alt);
   const [saving, setSaving] = useState(false);
   const [usage, setUsage] = useState<MediaUsage | null>(null);
@@ -91,7 +92,7 @@ function Details({
       return;
     }
     onChanged({ ...item, alt: alt.trim() });
-    toast.success("Description saved. It's filled in whenever you pick this image.");
+    toast.success(`Description saved. It's filled in whenever you pick this ${noun}.`);
     if (justUploaded) onClose();
   }
 
@@ -123,13 +124,14 @@ function Details({
     <>
       <DialogHeader>
         <DialogTitle className="truncate pr-6">
-          {justUploaded ? "Describe your image" : item.fileName}
+          {justUploaded ? `Describe your ${noun}` : item.fileName}
         </DialogTitle>
         <DialogDescription>
           {justUploaded
             ? "A short description helps people using screen readers, and helps Google understand your page."
             : [
                 item.width && item.height ? `${item.width} × ${item.height}` : null,
+                item.durationSeconds ? formatDuration(item.durationSeconds) : null,
                 formatBytes(item.sizeBytes),
                 `uploaded ${new Date(item.createdAt).toLocaleDateString()}`,
               ]
@@ -138,10 +140,10 @@ function Details({
         </DialogDescription>
       </DialogHeader>
 
-      <MediaThumb item={item} className="max-h-72 rounded-lg border" contain />
+      <MediaThumb item={item} className="max-h-72 rounded-lg border" contain playable />
 
       <div className="grid gap-2">
-        <Label htmlFor={altId}>Image description</Label>
+        <Label htmlFor={altId}>{noun === "video" ? "Video" : "Image"} description</Label>
         <Textarea
           id={altId}
           value={alt}
@@ -152,7 +154,7 @@ function Details({
           onChange={(event) => setAlt(event.target.value)}
         />
         <p className="text-xs text-muted-foreground">
-          Describe what the image shows. Used as the default whenever you add it to a section.
+          Describe what the {noun} shows. Used as the default whenever you add it to a section.
         </p>
       </div>
 
@@ -186,13 +188,13 @@ function Details({
             trigger={
               <Button variant="ghost" className="text-destructive" disabled={!usage}>
                 <Trash2Icon aria-hidden />
-                Delete image
+                Delete {noun}
               </Button>
             }
             title={`Delete “${item.fileName}”?`}
-            description="The image will be removed from your library."
+            description={`The ${noun} will be removed from your library.`}
             consequences={consequences}
-            confirmLabel={usage?.places.length ? "Delete and remove from pages" : "Delete image"}
+            confirmLabel={usage?.places.length ? "Delete and remove from pages" : `Delete ${noun}`}
             tone="destructive"
             onConfirm={handleDelete}
           />

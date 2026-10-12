@@ -4,10 +4,30 @@ import { AlertCircleIcon, CheckIcon, ImageUpIcon, XIcon } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { ALLOWED_IMAGE_TYPES, formatBytes, MAX_UPLOAD_BYTES } from "@/lib/media-rules";
+import {
+  type Accept,
+  acceptedTypes,
+  formatBytes,
+  MAX_IMAGE_BYTES,
+  MAX_VIDEO_BYTES,
+} from "@/lib/media-rules";
 import { cn } from "@/lib/utils";
 
 import type { UploadItem } from "./use-uploads";
+
+const NOUNS: Record<Accept, { single: string; plural: string }> = {
+  image: { single: "an image", plural: "images" },
+  video: { single: "a video", plural: "videos" },
+  any: { single: "a file", plural: "files" },
+};
+
+const IMAGE_HINT = `JPG, PNG, WebP, GIF or SVG, up to ${formatBytes(MAX_IMAGE_BYTES)}.`;
+const VIDEO_HINT = `MP4 or WebM, up to ${formatBytes(MAX_VIDEO_BYTES)}.`;
+const HINTS: Record<Accept, string> = {
+  image: IMAGE_HINT,
+  video: VIDEO_HINT,
+  any: `Images: ${IMAGE_HINT} Videos: ${VIDEO_HINT}`,
+};
 
 /** Drop area plus a "Choose files" button. Also accepts images pasted from the clipboard. */
 export function UploadZone({
@@ -16,12 +36,15 @@ export function UploadZone({
   onDismiss,
   compact = false,
   multiple = true,
+  accept = "image",
 }: {
   onFiles: (files: File[]) => void;
   uploads: UploadItem[];
   onDismiss: (id: string) => void;
   compact?: boolean;
   multiple?: boolean;
+  /** Images (default), videos, or both. */
+  accept?: Accept;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -53,7 +76,7 @@ export function UploadZone({
       >
         <ImageUpIcon className="size-7 text-muted-foreground" aria-hidden />
         <p className="text-sm font-medium">
-          {dragging ? "Drop to upload" : "Drag images here, or"}
+          {dragging ? "Drop to upload" : `Drag ${NOUNS[accept].plural} here, or`}
         </p>
         <Button
           type="button"
@@ -62,15 +85,15 @@ export function UploadZone({
           aria-describedby={hintId}
           onClick={() => inputRef.current?.click()}
         >
-          Choose {multiple ? "images" : "an image"}
+          Choose {multiple ? NOUNS[accept].plural : NOUNS[accept].single}
         </Button>
         <p id={hintId} className="text-xs text-muted-foreground">
-          JPG, PNG, WebP, GIF or SVG, up to {formatBytes(MAX_UPLOAD_BYTES)}.
+          {HINTS[accept]}
         </p>
         <input
           ref={inputRef}
           type="file"
-          accept={ALLOWED_IMAGE_TYPES.join(",")}
+          accept={acceptedTypes(accept).join(",")}
           multiple={multiple}
           className="sr-only"
           tabIndex={-1}

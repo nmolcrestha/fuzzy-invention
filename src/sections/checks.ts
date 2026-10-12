@@ -1,5 +1,8 @@
 // Pre-publish checks (requirement PUB-11). Non-blocking: they explain what visitors would see.
-import type { Field, Fields, ImageValue, LinkValue, ListItem } from "./fields";
+import { backdropProblems } from "./backdrop";
+import { ITEM_DEFS } from "./items";
+import type { CustomLayout } from "./layout";
+import type { Field, Fields, ImageValue, LinkValue, ListItem, VideoValue } from "./fields";
 import { getSectionDef, type SectionBlock } from "./registry";
 import { type RichTextDoc, type RichTextNode, richTextIsEmpty } from "./rich-text";
 
@@ -10,6 +13,7 @@ export function fieldIsEmpty(field: Field, value: unknown): boolean {
     case "richText":
       return richTextIsEmpty(value as RichTextDoc);
     case "image":
+    case "video":
       return !(value as ImageValue | undefined)?.src;
     case "link":
       return !(value as LinkValue | undefined)?.label?.trim();
@@ -64,11 +68,22 @@ function walk(fields: Fields, data: Record<string, unknown>, where: string, resu
         );
       }
     }
+    if (field.kind === "video") {
+      const video = value as VideoValue | undefined;
+      if (video?.src && !video.poster) {
+        result.problems.push(
+          `${where}: a video has no still image, so visitors see a blank box until it loads.`,
+        );
+      }
+    }
     if (field.kind === "richText") {
       for (const href of richTextLinks((value as RichTextDoc | undefined)?.content)) {
         const path = linkPath(href);
         if (path) result.internalLinks.push(path);
       }
+    }
+    if (field.kind === "layout") {
+      walkLayout(value as CustomLayout, where, result);
     }
     if (field.kind === "list") {
       const items = (Array.isArray(value) ? value : []) as ListItem[];
@@ -81,6 +96,30 @@ function walk(fields: Fields, data: Record<string, unknown>, where: string, resu
   }
 }
 
+/** Built sections: every visible item's own checks, plus empty columns (SB-52). */
+function walkLayout(layout: CustomLayout, where: string, result: BlockCheck) {
+  layout.rows.forEach((row, rowIndex) => {
+    row.columns.forEach((column, columnIndex) => {
+      const visible = column.items.filter((item) => !item.isHidden);
+      if (visible.length === 0 && !column.mobile.hidden) {
+        result.problems.push(
+          row.columns.length > 1
+            ? `${where}: column ${columnIndex + 1} in row ${rowIndex + 1} is empty, so it shows as a gap.`
+            : `${where}: row ${rowIndex + 1} is empty.`,
+        );
+      }
+      for (const item of visible) {
+        walk(
+          ITEM_DEFS[item.kind].fields,
+          item.data,
+          `${where} › ${ITEM_DEFS[item.kind].name}`,
+          result,
+        );
+      }
+    });
+  });
+}
+
 /** Problems and internal links for one section, the header or the footer. */
 export function checkBlock(block: SectionBlock): BlockCheck {
   const result: BlockCheck = { problems: [], internalLinks: [] };
@@ -91,6 +130,11 @@ export function checkBlock(block: SectionBlock): BlockCheck {
     ? Object.fromEntries(Object.entries(def.fields).filter(([key]) => visible.includes(key)))
     : def.fields;
   walk(fields, block.data, def.name, result);
+  if (def.placement === "page") {
+    for (const problem of backdropProblems(block.style.backdrop)) {
+      result.problems.push(`${def.name}: ${problem}`);
+    }
+  }
   return result;
 }
 

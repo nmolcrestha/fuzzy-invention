@@ -3,6 +3,7 @@
 import { createContext, useContext } from "react";
 
 import type { PageSeo } from "@/db/schema";
+import type { SiteTheme } from "@/sections/theme";
 import type { ChecklistItem } from "@/server/sites/queries";
 
 export type EditorMeta = {
@@ -17,6 +18,7 @@ export type EditorMeta = {
   };
   pages: { id: string; title: string; path: string; showInNav: boolean; isHome: boolean }[];
   checklist: { items: ChecklistItem[]; homePageId: string | null } | null;
+  theme: SiteTheme;
 };
 
 /** Things only the editor shell can do (it owns the dialogs and the save-before-leaving logic). */

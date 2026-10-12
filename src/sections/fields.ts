@@ -19,6 +19,8 @@ import {
 type Common = { label: string; help?: string; required?: boolean };
 
 export type ImageValue = { src: string; alt: string };
+/** An uploaded video and its still image (poster). */
+export type VideoValue = { src: string; poster: string; alt: string };
 export type LinkValue = { label: string; href: string };
 
 export type TextField = Common & {
@@ -41,7 +43,21 @@ export type ImageField = Common & {
   schema: z.ZodType<ImageValue>;
   default: ImageValue;
 };
+export type VideoField = Common & {
+  kind: "video";
+  schema: z.ZodType<VideoValue>;
+  default: VideoValue;
+};
 export type LinkField = Common & { kind: "link"; schema: z.ZodType<LinkValue>; default: LinkValue };
+/**
+ * A built section's rows, columns and items (Phase 6). Edited by the layout editor, not the
+ * generic form; its schema and default come from `src/sections/layout.ts`.
+ */
+export type LayoutField = Common & {
+  kind: "layout";
+  schema: z.ZodType<Record<string, unknown>>;
+  default: Record<string, unknown>;
+};
 export type SelectField = Common & {
   kind: "select";
   options: { value: string; label: string }[];
@@ -68,11 +84,13 @@ export type Field =
   | TextField
   | RichTextField
   | ImageField
+  | VideoField
   | LinkField
   | SelectField
   | ToggleField
   | IconField
-  | ListField;
+  | ListField
+  | LayoutField;
 
 export type Fields = Record<string, Field>;
 export type ListItem = { id: string } & Record<string, unknown>;
@@ -118,6 +136,19 @@ export const f = {
           src: z.union([z.literal(""), z.url({ protocol: /^https?$/ })]).catch(""),
           alt: z.string().max(200).catch(""),
         })
+        .catch(fallback),
+      default: fallback,
+    };
+  },
+
+  video(opts: Common & { default?: VideoValue }): VideoField {
+    const fallback = opts.default ?? { src: "", poster: "", alt: "" };
+    const url = z.union([z.literal(""), z.url({ protocol: /^https?$/ })]).catch("");
+    return {
+      kind: "video",
+      ...opts,
+      schema: z
+        .object({ src: url, poster: url, alt: z.string().max(200).catch("") })
         .catch(fallback),
       default: fallback,
     };

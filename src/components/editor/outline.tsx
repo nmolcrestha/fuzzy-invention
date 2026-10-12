@@ -47,6 +47,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Field } from "@/sections/fields";
+import { type CustomLayout, layoutItems } from "@/sections/layout";
+import { sectionDisplayName } from "@/sections/presets";
 import { getSectionDef, type SectionBlock } from "@/sections/registry";
 
 import { useEditorActions } from "./editor-meta";
@@ -57,6 +59,13 @@ import { useSectionActions } from "./use-section-actions";
 function summary(block: SectionBlock): string {
   const def = getSectionDef(block.type);
   if (!def) return "";
+  if (block.type === "custom") {
+    const heading = layoutItems(block.data.layout as CustomLayout).find(
+      ({ item }) => item.kind === "heading",
+    );
+    const text = (heading?.item.data as { text?: string } | undefined)?.text?.trim();
+    return text || def.description;
+  }
   for (const [key, field] of Object.entries(def.fields) as [string, Field][]) {
     if (
       field.kind === "text" &&
@@ -213,7 +222,7 @@ function SortableRow({
     isDragging,
   } = useSortable({ id: block.id });
   const def = getSectionDef(block.type);
-  const name = def?.name ?? block.type;
+  const name = sectionDisplayName(block, def?.name ?? block.type);
 
   return (
     <li

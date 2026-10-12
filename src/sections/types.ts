@@ -21,6 +21,8 @@ export type SectionDefinition = {
   schemaVersion: number;
   /** Fields that only make sense for some variants. */
   fieldsForVariant?: (variant: string) => string[] | null;
+  /** Not listed in the section picker (e.g. built sections, added through "Build your own"). */
+  hidden?: boolean;
 };
 
 export function defineSection<const T extends SectionDefinition>(definition: T): T {

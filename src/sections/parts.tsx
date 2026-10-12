@@ -42,6 +42,8 @@ export type SectionProps<T> = {
   site: SiteContext;
   /** The block's id, for anything that needs a unique name on the page (e.g. form inputs). */
   sectionId: string;
+  /** The first section on the page (its main heading becomes the page's h1). */
+  isFirst?: boolean;
 };
 
 export const container = "mx-auto w-full max-w-6xl px-5 sm:px-8";

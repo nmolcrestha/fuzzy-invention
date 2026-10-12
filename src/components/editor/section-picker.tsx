@@ -1,6 +1,6 @@
 "use client";
 
-import { CopyIcon, Link2Icon, Loader2Icon, Trash2Icon } from "lucide-react";
+import { CopyIcon, Link2Icon, Loader2Icon, Trash2Icon, WandSparklesIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -64,6 +64,7 @@ export function SectionPicker({
   onPick,
   onLink,
   onCopy,
+  onBuild,
   beforeRemove,
   siteId,
   onPageIds,
@@ -76,6 +77,8 @@ export function SectionPicker({
   /** Add a saved section, linked (stays in sync) or as a copy (SEC-7). */
   onLink: (item: LibraryItem) => void;
   onCopy: (item: LibraryItem) => void;
+  /** Opens "Build your own" (SB-1). */
+  onBuild: () => void;
   /** Called before removing a saved section (save pending edits); false stops it. */
   beforeRemove: () => Promise<boolean>;
   siteId: string;
@@ -101,6 +104,22 @@ export function SectionPicker({
             Pick a starting point. You can change the text, layout and colors afterwards.
           </DialogDescription>
         </DialogHeader>
+        <button
+          type="button"
+          onClick={onBuild}
+          className="flex items-center gap-4 rounded-xl border-2 border-dashed border-primary/40 p-4 text-left transition-colors hover:border-primary hover:bg-primary/5"
+        >
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <WandSparklesIcon className="size-5" aria-hidden />
+          </span>
+          <span>
+            <span className="block font-medium">Build your own section</span>
+            <span className="block text-sm text-muted-foreground">
+              Pick what it&apos;s for, start from a design, and make it yours: hero, logo carousel,
+              slider, video and more.
+            </span>
+          </span>
+        </button>
         {open && (
           <SavedSections
             siteId={siteId}
